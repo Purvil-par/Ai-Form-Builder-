@@ -1,0 +1,386 @@
+/**
+ * Canva-Style Form Editor Styles
+ */
+
+/* Canvas Grid Background */
+.canvas-grid {
+  background-color: #ffffff;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Field Selection Highlight */
+.field-selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  position: relative;
+}
+
+.field-selected::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px dashed #3b82f6;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* Drag Handle */
+.drag-handle {
+  cursor: move;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.field-wrapper:hover .drag-handle {
+  opacity: 1;
+}
+
+/* Resize Handles */
+.resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.field-selected .resize-handle {
+  opacity: 1;
+}
+
+.resize-handle-nw {
+  top: -4px;
+  left: -4px;
+  cursor: nw-resize;
+}
+.resize-handle-ne {
+  top: -4px;
+  right: -4px;
+  cursor: ne-resize;
+}
+.resize-handle-sw {
+  bottom: -4px;
+  left: -4px;
+  cursor: sw-resize;
+}
+.resize-handle-se {
+  bottom: -4px;
+  right: -4px;
+  cursor: se-resize;
+}
+.resize-handle-n {
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: n-resize;
+}
+.resize-handle-s {
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: s-resize;
+}
+.resize-handle-w {
+  top: 50%;
+  left: -4px;
+  transform: translateY(-50%);
+  cursor: w-resize;
+}
+.resize-handle-e {
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%);
+  cursor: e-resize;
+}
+
+/* Field Wrapper */
+.field-wrapper {
+  position: relative;
+  padding-left: 2rem;
+  transition: all 0.2s ease;
+}
+
+.field-wrapper:hover {
+  background-color: rgba(59, 130, 246, 0.02);
+}
+
+/* Drop Zone Indicator */
+.drop-zone-active {
+  border: 2px dashed #3b82f6;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 8px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3b82f6;
+  font-size: 14px;
+}
+
+/* Scrollbar Styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Panel Divider */
+.panel-divider {
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    #e5e7eb 20%,
+    #e5e7eb 80%,
+    transparent
+  );
+}
+
+/* Color Picker Custom Styles */
+.color-picker-wrapper {
+  position: relative;
+}
+
+.color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-swatch:hover {
+  border-color: #9ca3af;
+  transform: scale(1.05);
+}
+
+/* Field Palette Item */
+.field-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: grab;
+  transition: all 0.2s;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.field-palette-item svg {
+  flex-shrink: 0;
+}
+
+.field-palette-item:hover {
+  background: #f9fafb;
+  border-color: #3b82f6;
+  transform: translateX(4px);
+}
+
+.field-palette-item:active {
+  cursor: grabbing;
+}
+
+/* Toolbar Button */
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toolbar-button:hover {
+  background: #f9fafb;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.toolbar-button:active {
+  background: #f3f4f6;
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar-button.active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+/* Canvas Mode Buttons */
+.canvas-mode-button {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.canvas-mode-button:hover {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+.canvas-mode-button.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+/* Style Panel Section */
+.style-section {
+  padding: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.style-section:last-child {
+  border-bottom: none;
+}
+
+.style-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+/* Input Controls */
+.style-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+  color: #1f2937;
+  background-color: #ffffff;
+}
+
+.style-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Slider */
+.style-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #e5e7eb;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.style-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.style-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Template Card */
+.template-card {
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Responsive Canvas Modes */
+.canvas-mode-desktop {
+  max-width: 100%;
+}
+
+.canvas-mode-tablet {
+  max-width: 768px;
+  margin: 0 auto;
+}
+
+.canvas-mode-mobile {
+  max-width: 375px;
+  margin: 0 auto;
+}
+
+/* Drag Handle Styles */
+.cursor-grab {
+  cursor: grab;
+}
+
+.cursor-grab:active {
+  cursor: grabbing;
+}
+
+/* Dragging State */
+.opacity-50 {
+  opacity: 0.5;
+}
+
+.scale-95 {
+  transform: scale(0.95);
+}
