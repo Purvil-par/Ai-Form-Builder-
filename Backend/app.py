@@ -43,56 +43,38 @@ from models.form_models import FormCreate, FormStatus
 
 load_dotenv()
 
-# Initialize LLM
+# Initialize LLM with high max_tokens for large form generation
+# GPT-4o supports up to 16384 output tokens - we use 16000 to be safe
 model = ChatOpenAI(
     model="gpt-4o",
     temperature=0,
-    api_key=settings.OPENAI_API_KEY
+    api_key=settings.OPENAI_API_KEY,
+    max_tokens=16000  # Increased for large forms (50+ MCQ questions)
 )
 
 # Enhanced system prompt with single-question JSON format
+# Optimized for both small and large form generation (supports 50+ MCQ forms)
 SYSTEM_PROMPT = """You are an expert form designer AI. Your job is to help users create professional, user-friendly forms by asking ONE clarifying question at a time and then generating a complete form specification.
 
 RESPONSE FORMAT RULES (CRITICAL):
 
 1. When asking a clarifying question, respond with JSON in this EXACT format:
-{
-  "mode": "question", 
-  "question": {
-    "id": "unique_question_id",
-    "label": "User-friendly question text?",
-    "type": "radio",
-    "options": ["Option 1", "Option 2", "Option 3"]
-  }
-}
+{"mode":"question","question":{"id":"unique_id","label":"Question text?","type":"radio","options":["Option 1","Option 2"]}}
 
-QUESTION TYPES:
-- "radio": Single-choice question (user selects ONE option)
-- "checkbox": Multi-choice question (user can select MULTIPLE options)
-- "text": Open-ended text input
+    QUESTION TYPES:
+    - "radio": Single-choice question (user selects ONE option)
+    - "checkbox": Multi-choice question (user can select MULTIPLE options)
+    - "text": Open-ended text input
 
-2. When generating the final form, respond with JSON in this EXACT format:
-{
-  "mode": "form_schema",
-  "form": {
-    "title": "Form Title",
-    "description": "Optional description",
-    "fields": [
-      {
-        "id": "field_id",
-        "type": "text",
-        "label": "Field Label",
-        "placeholder": "Optional placeholder",
-        "required": true,
-        "validation": "email",
-        "options": ["opt1", "opt2"],
-        "accept": [".pdf", ".doc"],
-        "min": 0,
-        "max": 100
-      }
-    ]
-  }
-}
+2. When generating the final form, respond with COMPACT JSON (no extra whitespace):
+{"mode":"form_schema","form":{"title":"Form Title","description":"Optional description","fields":[{"id":"field_id","type":"radio","label":"Question Label","required":true,"options":["opt1","opt2"]}]}}
+
+CRITICAL JSON RULES:
+- Output MUST be valid, complete JSON - never truncate or cut off
+- Use compact format (minimize whitespace) for large forms
+- ALWAYS close all brackets and braces properly
+- If the form is very large (50+ fields), use abbreviated field IDs like "q1", "q2" etc.
+- For MCQ/quiz forms: each question should be a "radio" type field with "options" array
 
 FIELD TYPES: text, email, tel, number, select, checkbox, radio, textarea, file, date, time, url
 
@@ -110,12 +92,13 @@ QUESTION GUIDELINES:
 - Progress logically from general to specific
 
 FORM GENERATION GUIDELINES:
-- Use snake_case for field IDs
+- Use short snake_case for field IDs (keep IDs brief for large forms)
 - Include helpful placeholders and hints
 - Ensure proper validation (required fields, email format, file types, etc.)
 - Keep forms concise and user-friendly
 - Add min/max constraints for number fields when appropriate
 - For file uploads, specify accepted file types in the accept array
+- For MCQ/Quiz forms with many questions: generate ALL questions requested by the user
 
 Be professional, helpful, and efficient."""
 
@@ -187,6 +170,7 @@ class QuestionData(BaseModel):
 class InitFormRequest(BaseModel):
     form_type: str
     custom_prompt: Optional[str] = None  # For blank forms with user-defined prompts
+    file_content: Optional[str] = None  # Content from uploaded file (MCQs, data, etc.)
     session_id: Optional[str] = None
 
 
@@ -305,7 +289,27 @@ async def init_form_creation(
                     status_code=400,
                     detail="custom_prompt is required for blank forms (minimum 10 characters)"
                 )
-            initial_prompt = wrap_user_prompt(req.custom_prompt.strip())
+            
+            # Combine user prompt with file content if provided
+            user_prompt = req.custom_prompt.strip()
+            if req.file_content and len(req.file_content.strip()) > 0:
+                # Format: User instructions + File content
+                combined_prompt = f"""USER INSTRUCTIONS:
+{user_prompt}
+
+UPLOADED FILE CONTENT:
+---
+{req.file_content.strip()}
+---
+
+Please analyze the file content above and follow the user's instructions to generate the form.
+If the file contains MCQs/questions, extract them and create form fields accordingly.
+If the file contains data, generate relevant questions/fields based on that data."""
+                logger.info(f"File content provided ({len(req.file_content)} chars), combining with prompt")
+                initial_prompt = wrap_user_prompt(combined_prompt)
+            else:
+                initial_prompt = wrap_user_prompt(user_prompt)
+            
             logger.info(f"Blank form with custom prompt: {req.custom_prompt[:100]}...")
         else:
             initial_prompt = get_form_prompt(req.form_type)

@@ -54,7 +54,7 @@ const SingleQuestion: React.FC<SingleQuestionProps> = ({
     return (
         <div className="max-w-2xl mx-auto">
             {/* Question Number */}
-            <div className="text-primary-600 font-semibold text-lg mb-4">
+            <div className="text-primary-500 font-semibold text-lg mb-4">
                 Q{questionNumber}
             </div>
 
@@ -89,7 +89,7 @@ const SingleQuestion: React.FC<SingleQuestionProps> = ({
                         onChange={(e) => setAnswer(e.target.value)}
                         placeholder="Type your answer..."
                         disabled={isLoading}
-                        className="w-full h-32 px-4 py-3 bg-dark-bg border-2 border-dark-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-none"
+                        className="w-full h-32 px-4 py-3 bg-white border-2 border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                     />
                 )}
             </div>
@@ -108,7 +108,7 @@ const SingleQuestion: React.FC<SingleQuestionProps> = ({
                 <button
                     onClick={handleSubmit}
                     disabled={isLoading || !isValid}
-                    className="ml-auto px-8 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="ml-auto px-8 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
                 >
                     {isLoading ? (
                         <>

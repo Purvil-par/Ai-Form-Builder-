@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * Reusable Card Component
- * Features hover lift effect with shadow and smooth transitions
+ * Reusable Card Component - Canva Style
+ * Clean white cards with subtle shadows and gentle interactions
  */
 const Card = ({
     children,
@@ -11,10 +11,10 @@ const Card = ({
     hoverable = true,
     ...props
 }) => {
-    const baseStyles = 'bg-dark-card border border-dark-border rounded-2xl p-6 transition-all duration-300';
+    const baseStyles = 'bg-white border border-border rounded-xl p-6 transition-all duration-250';
     const hoverStyles = hoverable && onClick
-        ? 'hover:shadow-neon-glow hover:-translate-y-2 cursor-pointer hover:border-primary-600/50'
-        : 'shadow-lg';
+        ? 'hover:shadow-card-hover hover:-translate-y-1 cursor-pointer hover:border-primary-300'
+        : 'shadow-card';
 
     return (
         <div

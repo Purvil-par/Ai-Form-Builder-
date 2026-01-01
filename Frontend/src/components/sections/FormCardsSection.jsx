@@ -16,8 +16,8 @@ import Card from '../ui/Card';
 import SectionWrapper from '../ui/SectionWrapper';
 
 /**
- * Form Cards Section Component
- * Displays 11 form type cards with icons and descriptions
+ * Form Cards Section Component - Canva Style
+ * Clean cards displaying form types with simple icons
  */
 const FormCardsSection = () => {
     const formTypes = [
@@ -97,19 +97,19 @@ const FormCardsSection = () => {
     };
 
     return (
-        <SectionWrapper background="darker">
+        <SectionWrapper background="light">
             {/* Section Header */}
-            <div className="text-center mb-16">
-                <h2 className="text-4xl md:text-5xl font-bold text-text-primary mb-4">
+            <div className="text-center mb-12 md:mb-16">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary mb-4">
                     Choose Your Form Type
                 </h2>
-                <p className="text-xl text-text-secondary max-w-2xl mx-auto">
-                    Select from our pre-built templates or start with a blank canvas
+                <p className="text-lg md:text-xl text-text-secondary max-w-2xl mx-auto">
+                    Select from our templates or start with a blank canvas
                 </p>
             </div>
 
             {/* Form Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {formTypes.map((formType) => {
                     const Icon = formType.icon;
 
@@ -121,26 +121,26 @@ const FormCardsSection = () => {
                         >
                             {/* Popular Badge */}
                             {formType.popular && (
-                                <div className="absolute -top-3 -right-3 bg-gradient-to-r from-primary-600 to-secondary-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-neon-pink">
+                                <div className="absolute -top-2 -right-2 bg-primary-500 text-white text-xs font-medium px-3 py-1 rounded-full shadow-sm">
                                     Most Used
                                 </div>
                             )}
 
                             {/* Icon */}
-                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${formType.popular
-                                ? 'bg-gradient-to-br from-primary-500 to-secondary-500'
-                                : 'bg-dark-bg border border-dark-border'
+                            <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 transition-all duration-250 ${formType.popular
+                                ? 'bg-primary-500'
+                                : 'bg-accent-purple'
                                 }`}>
-                                <Icon className={`w-7 h-7 ${formType.popular ? 'text-white' : 'text-primary-600'}`} />
+                                <Icon className={`w-6 h-6 ${formType.popular ? 'text-white' : 'text-primary-500'}`} />
                             </div>
 
                             {/* Title */}
-                            <h3 className="text-lg font-semibold text-text-primary mb-2 group-hover:text-secondary-500 transition-colors">
+                            <h3 className="text-base md:text-lg font-semibold text-text-primary mb-2 group-hover:text-primary-500 transition-colors">
                                 {formType.title}
                             </h3>
 
                             {/* Description */}
-                            <p className="text-sm text-text-muted">
+                            <p className="text-sm text-text-muted leading-relaxed">
                                 {formType.description}
                             </p>
                         </Card>

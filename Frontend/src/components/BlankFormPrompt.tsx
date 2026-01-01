@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Sparkles, X, Lightbulb } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, X, Lightbulb, Paperclip, Trash2, FileText, Image } from 'lucide-react';
 
 /**
  * Blank Form Prompt Component
@@ -7,7 +7,7 @@ import { Sparkles, X, Lightbulb } from 'lucide-react';
  */
 
 interface BlankFormPromptProps {
-    onSubmit: (prompt: string) => void;
+    onSubmit: (prompt: string, fileContent?: string) => void;
     onCancel: () => void;
     isLoading?: boolean;
 }
@@ -15,6 +15,22 @@ interface BlankFormPromptProps {
 const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, isLoading = false }) => {
     const [prompt, setPrompt] = useState('');
     const [error, setError] = useState('');
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+    const [fileContent, setFileContent] = useState<string>('');
+    const [fileError, setFileError] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // Image upload state
+    const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string>('');
+    const [imageError, setImageError] = useState('');
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
+    // Supported file types
+    const SUPPORTED_EXTENSIONS = ['.txt', '.csv', '.json', '.md'];
+    const MAX_FILE_SIZE = 500 * 1024; // 500KB limit
+    const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB limit for images
 
     const examplePrompts = [
         "Create a job application form with resume upload, cover letter, and 3 professional references",
@@ -33,7 +49,100 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
         }
 
         setError('');
-        onSubmit(trimmedPrompt);
+        // Pass both prompt and file content to parent
+        onSubmit(trimmedPrompt, fileContent || undefined);
+    };
+
+    // Handle file selection
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setFileError('');
+
+        // Check file extension
+        const extension = '.' + file.name.split('.').pop()?.toLowerCase();
+        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
+            setFileError(`Unsupported file type. Please upload: ${SUPPORTED_EXTENSIONS.join(', ')}`);
+            return;
+        }
+
+        // Check file size
+        if (file.size > MAX_FILE_SIZE) {
+            setFileError(`File too large. Maximum size: ${MAX_FILE_SIZE / 1024}KB`);
+            return;
+        }
+
+        // Read file content
+        try {
+            const content = await readFileAsText(file);
+            setUploadedFile(file);
+            setFileContent(content);
+        } catch (err) {
+            setFileError('Failed to read file. Please try again.');
+        }
+    };
+
+    // Read file as text
+    const readFileAsText = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsText(file);
+        });
+    };
+
+    // Remove uploaded file
+    const handleRemoveFile = () => {
+        setUploadedFile(null);
+        setFileContent('');
+        setFileError('');
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    };
+
+    // Handle image selection
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImageError('');
+
+        // Check image type
+        if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
+            setImageError('Unsupported image type. Please upload: JPEG, PNG, GIF, or WebP');
+            return;
+        }
+
+        // Check file size
+        if (file.size > MAX_IMAGE_SIZE) {
+            setImageError(`Image too large. Maximum size: ${MAX_IMAGE_SIZE / (1024 * 1024)}MB`);
+            return;
+        }
+
+        // Create preview and Base64
+        try {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setImagePreview(event.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+            setUploadedImage(file);
+        } catch (err) {
+            setImageError('Failed to read image. Please try again.');
+        }
+    };
+
+    // Remove uploaded image
+    const handleRemoveImage = () => {
+        setUploadedImage(null);
+        setImagePreview('');
+        setImageError('');
+        if (imageInputRef.current) {
+            imageInputRef.current.value = '';
+        }
     };
 
     const handleExampleClick = (example: string) => {
@@ -49,12 +158,12 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
     };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-dark-card border border-dark-border rounded-2xl shadow-neon-glow max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-white border border-border rounded-xl shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="sticky top-0 bg-dark-card border-b border-dark-border p-6 flex items-center justify-between">
+                <div className="sticky top-0 bg-white border-b border-border p-6 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary-600 to-secondary-500 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-primary-500 flex items-center justify-center">
                             <Sparkles className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -65,7 +174,7 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
                     <button
                         onClick={onCancel}
                         disabled={isLoading}
-                        className="p-2 hover:bg-dark-bg rounded-lg transition-colors disabled:opacity-50"
+                        className="p-2 hover:bg-bg-secondary rounded-lg transition-colors disabled:opacity-50"
                     >
                         <X className="w-5 h-5 text-text-muted" />
                     </button>
@@ -73,40 +182,144 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
 
                 {/* Content */}
                 <div className="p-6 space-y-6">
-                    {/* Textarea */}
+                    {/* Textarea with integrated file upload */}
                     <div>
                         <label className="block text-sm font-medium text-text-primary mb-2">
                             Form Description
                         </label>
-                        <textarea
-                            value={prompt}
-                            onChange={(e) => {
-                                setPrompt(e.target.value);
-                                setError('');
-                            }}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Example: I need a customer survey form with satisfaction ratings, multiple choice questions about our services, and an optional comments section..."
-                            className="w-full h-40 px-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent resize-none"
-                            disabled={isLoading}
-                            autoFocus
-                        />
+                        
+                        {/* Textarea Container with File Button Inside */}
+                        <div className="relative">
+                            <textarea
+                                value={prompt}
+                                onChange={(e) => {
+                                    setPrompt(e.target.value);
+                                    setError('');
+                                }}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Example: I need a customer survey form with satisfaction ratings, multiple choice questions about our services, and an optional comments section..."
+                                className="w-full h-44 px-4 py-3 pb-14 bg-white border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                                disabled={isLoading}
+                                autoFocus
+                            />
+                            
+                            {/* Hidden File Input */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".txt,.csv,.json,.md"
+                                onChange={handleFileSelect}
+                                disabled={isLoading}
+                                className="hidden"
+                                id="file-upload"
+                            />
+                            
+                            {/* Add File Button - Bottom Left of Textarea */}
+                            <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                                {/* Add File Button */}
+                                {!uploadedFile ? (
+                                    <label
+                                        htmlFor="file-upload"
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-secondary hover:bg-gray-200 border border-border rounded-md cursor-pointer transition-colors text-sm ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title="Upload file (.txt, .csv, .json, .md)"
+                                    >
+                                        <Paperclip className="w-4 h-4 text-text-muted" />
+                                        <span className="text-text-secondary">Add File</span>
+                                    </label>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary-50 border border-primary-200 rounded-md">
+                                        <FileText className="w-4 h-4 text-primary-600" />
+                                        <span className="text-sm text-primary-700 font-medium max-w-[100px] truncate">
+                                            {uploadedFile.name}
+                                        </span>
+                                        <button
+                                            onClick={handleRemoveFile}
+                                            disabled={isLoading}
+                                            className="p-0.5 text-red-500 hover:bg-red-100 rounded transition-colors disabled:opacity-50"
+                                            title="Remove file"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                                
+                                {/* Hidden Image Input */}
+                                <input
+                                    ref={imageInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    onChange={handleImageSelect}
+                                    disabled={isLoading}
+                                    className="hidden"
+                                    id="image-upload"
+                                />
+                                
+                                {/* Add Image Button */}
+                                {!uploadedImage ? (
+                                    <label
+                                        htmlFor="image-upload"
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-bg-secondary hover:bg-gray-200 border border-border rounded-md cursor-pointer transition-colors text-sm ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        title="Upload image (JPEG, PNG, GIF, WebP)"
+                                    >
+                                        <Image className="w-4 h-4 text-text-muted" />
+                                        <span className="text-text-secondary">Add Image</span>
+                                    </label>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-md">
+                                        <img 
+                                            src={imagePreview} 
+                                            alt="Preview" 
+                                            className="w-6 h-6 object-cover rounded"
+                                        />
+                                        <span className="text-sm text-green-700 font-medium max-w-[100px] truncate">
+                                            {uploadedImage.name}
+                                        </span>
+                                        <button
+                                            onClick={handleRemoveImage}
+                                            disabled={isLoading}
+                                            className="p-0.5 text-red-500 hover:bg-red-100 rounded transition-colors disabled:opacity-50"
+                                            title="Remove image"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Character Count - Bottom Right */}
+                            <div className="absolute bottom-3 right-3">
+                                <span className={`text-xs ${prompt.length < 10 ? 'text-red-500' : 'text-text-muted'}`}>
+                                    {prompt.length} characters
+                                </span>
+                            </div>
+                        </div>
+                        
+                        {/* Tip and Errors */}
                         <div className="flex items-center justify-between mt-2">
                             <p className="text-xs text-text-muted">
-                                Tip: Press <kbd className="px-1.5 py-0.5 bg-dark-bg border border-dark-border rounded text-xs">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-dark-bg border border-dark-border rounded text-xs">Enter</kbd> to submit
+                                Tip: Press <kbd className="px-1.5 py-0.5 bg-bg-secondary border border-border rounded text-xs">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-bg-secondary border border-border rounded text-xs">Enter</kbd> to submit
                             </p>
-                            <span className={`text-xs ${prompt.length < 10 ? 'text-red-500' : 'text-text-muted'}`}>
-                                {prompt.length} characters
-                            </span>
+                            {uploadedFile && (
+                                <span className="text-xs text-primary-500">
+                                    📎 File attached
+                                </span>
+                            )}
                         </div>
                         {error && (
                             <p className="text-sm text-red-500 mt-2">{error}</p>
+                        )}
+                        {fileError && (
+                            <p className="text-sm text-red-500 mt-1">{fileError}</p>
+                        )}
+                        {imageError && (
+                            <p className="text-sm text-red-500 mt-1">{imageError}</p>
                         )}
                     </div>
 
                     {/* Example Prompts */}
                     <div>
                         <div className="flex items-center gap-2 mb-3">
-                            <Lightbulb className="w-4 h-4 text-secondary-500" />
+                            <Lightbulb className="w-4 h-4 text-primary-500" />
                             <h3 className="text-sm font-medium text-text-primary">Example Prompts</h3>
                         </div>
                         <div className="grid gap-2">
@@ -115,7 +328,7 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
                                     key={index}
                                     onClick={() => handleExampleClick(example)}
                                     disabled={isLoading}
-                                    className="text-left p-3 bg-dark-bg hover:bg-dark-bg/80 border border-dark-border hover:border-primary-600/50 rounded-lg transition-all text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="text-left p-3 bg-bg-secondary hover:bg-accent-purple border border-border hover:border-primary-300 rounded-lg transition-all text-sm text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {example}
                                 </button>
@@ -124,7 +337,7 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
                     </div>
 
                     {/* Helper Text */}
-                    <div className="bg-primary-600/10 border border-primary-600/30 rounded-lg p-4">
+                    <div className="bg-accent-purple border border-border rounded-lg p-4">
                         <h4 className="text-sm font-medium text-text-primary mb-2">💡 Tips for better results:</h4>
                         <ul className="text-sm text-text-secondary space-y-1 list-disc list-inside">
                             <li>Be specific about what information you need to collect</li>
@@ -136,18 +349,18 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 bg-dark-card border-t border-dark-border p-6 flex items-center justify-end gap-3">
+                <div className="sticky bottom-0 bg-white border-t border-border p-6 flex items-center justify-end gap-3">
                     <button
                         onClick={onCancel}
                         disabled={isLoading}
-                        className="px-6 py-3 bg-dark-bg hover:bg-dark-bg/80 text-text-primary rounded-lg transition-colors disabled:opacity-50"
+                        className="px-6 py-3 bg-bg-secondary hover:bg-bg-tertiary text-text-primary rounded-lg transition-colors disabled:opacity-50 border border-border"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleSubmit}
                         disabled={isLoading || prompt.trim().length < 10}
-                        className="px-6 py-3 bg-gradient-to-r from-primary-600 to-secondary-500 hover:from-primary-700 hover:to-secondary-600 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
                     >
                         {isLoading ? (
                             <>

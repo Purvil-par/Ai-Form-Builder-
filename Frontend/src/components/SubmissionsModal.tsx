@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { X, Download, FileJson, FileSpreadsheet, Loader2, Eye, Trash2, AlertCircle } from 'lucide-react';
 import * as submissionsService from '../api/submissionsService';
 import type { Submission } from '../api/submissionsService';
@@ -17,6 +18,7 @@ interface SubmissionsModalProps {
   formFields: any[];
   isOpen: boolean;
   onClose: () => void;
+  onDataChange?: () => void; // Called when submissions are deleted (to update counts)
 }
 
 export default function SubmissionsModal({
@@ -24,7 +26,8 @@ export default function SubmissionsModal({
   formTitle,
   formFields,
   isOpen,
-  onClose
+  onClose,
+  onDataChange
 }: SubmissionsModalProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,8 +65,10 @@ export default function SubmissionsModal({
       // Reload submissions after deletion
       await loadSubmissions();
       setSelectedSubmission(null);
+      // Notify parent to update submission counts
+      onDataChange?.();
     } catch (err) {
-      alert('Failed to delete submission: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      toast.error('Failed to delete submission: ' + (err instanceof Error ? err.message : 'Unknown error'));
     }
   };
 

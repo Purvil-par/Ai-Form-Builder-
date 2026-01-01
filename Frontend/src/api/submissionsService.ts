@@ -101,3 +101,69 @@ export async function deleteSubmission(submissionId: string): Promise<void> {
     throw new Error(error.detail || 'Failed to delete submission');
   }
 }
+
+/**
+ * Generate a UUID (compatible with all browsers)
+ */
+function generateUUID(): string {
+  // Use crypto.randomUUID if available, otherwise fallback
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * Get session ID from localStorage or create new one
+ */
+export function getOrCreateSessionId(): string {
+  const SESSION_KEY = 'form_session_id';
+  let sessionId = localStorage.getItem(SESSION_KEY);
+  
+  if (!sessionId) {
+    sessionId = generateUUID();
+    localStorage.setItem(SESSION_KEY, sessionId);
+  }
+  
+  return sessionId;
+}
+
+/**
+ * Get user's previous submission for prefill (public, no auth required)
+ */
+export async function getMySubmission(slug: string, sessionId: string): Promise<{
+  has_submission: boolean;
+  submission: {
+    id: string;
+    form_data: Record<string, any>;
+    submitted_at: string;
+    updated_at: string;
+  } | null;
+}> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/forms/${slug}/my-submission?session_id=${encodeURIComponent(sessionId)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    // If not found, return empty response
+    if (response.status === 404) {
+      return { has_submission: false, submission: null };
+    }
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch submission');
+  }
+
+  return response.json();
+}
+

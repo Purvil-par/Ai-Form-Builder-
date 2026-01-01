@@ -65,6 +65,7 @@ class FormCreate(BaseModel):
     globalStyles: Optional[Dict[str, Any]] = None
     ctaButton: Optional[Dict[str, Any]] = None
     status: FormStatus = FormStatus.DRAFT
+    editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
 
 
 class FormUpdate(BaseModel):
@@ -75,6 +76,7 @@ class FormUpdate(BaseModel):
     globalStyles: Optional[Dict[str, Any]] = None
     ctaButton: Optional[Dict[str, Any]] = None
     status: Optional[FormStatus] = None
+    editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
 
 
 class FormResponse(BaseModel):
@@ -94,6 +96,7 @@ class FormResponse(BaseModel):
     updated_at: str
     published_at: Optional[str] = None
     submission_count: int = 0
+    editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
     
     class Config:
         from_attributes = True

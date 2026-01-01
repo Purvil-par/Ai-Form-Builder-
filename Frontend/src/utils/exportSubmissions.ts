@@ -3,6 +3,7 @@
  * Functions to export form submissions to CSV and JSON formats
  */
 
+import toast from 'react-hot-toast';
 import type { Submission } from '../api/submissionsService';
 
 /**
@@ -10,7 +11,7 @@ import type { Submission } from '../api/submissionsService';
  */
 export function exportToCSV(submissions: Submission[], formFields: any[], formTitle: string): void {
   if (submissions.length === 0) {
-    alert('No submissions to export');
+    toast.error('No submissions to export');
     return;
   }
 
@@ -73,7 +74,7 @@ export function exportToCSV(submissions: Submission[], formFields: any[], formTi
  */
 export function exportToJSON(submissions: Submission[], formTitle: string): void {
   if (submissions.length === 0) {
-    alert('No submissions to export');
+    toast.error('No submissions to export');
     return;
   }
 

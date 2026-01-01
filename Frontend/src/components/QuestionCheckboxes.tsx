@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Button from './ui/Button';
 
 
@@ -52,7 +53,7 @@ const QuestionCheckboxes: React.FC<QuestionCheckboxesProps> = ({
 
     const handleSubmit = () => {
         if (selectedIds.length === 0) {
-            alert('Please select at least one option');
+            toast.error('Please select at least one option');
             return;
         }
         onSubmit(selectedIds);

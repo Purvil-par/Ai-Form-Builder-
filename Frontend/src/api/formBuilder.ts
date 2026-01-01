@@ -91,11 +91,13 @@ export interface SessionState {
  * @param formType - Type of form (predefined or 'blank')
  * @param customPrompt - Optional custom prompt for blank forms
  * @param sessionId - Optional session ID to resume
+ * @param fileContent - Optional file content to include with prompt
  */
 export async function initFormCreation(
     formType: string,
     customPrompt?: string,
-    sessionId?: string
+    sessionId?: string,
+    fileContent?: string
 ): Promise<InitFormResponse> {
     const response = await fetch(`${API_BASE_URL}/api/ai/form/init`, {
         method: 'POST',
@@ -103,7 +105,8 @@ export async function initFormCreation(
         body: JSON.stringify({
             form_type: formType,
             custom_prompt: customPrompt,
-            session_id: sessionId
+            session_id: sessionId,
+            file_content: fileContent
         }),
     });
 

@@ -37,6 +37,7 @@ export interface FormData {
     fontWeight?: string;
   };
   status?: 'draft' | 'published' | 'archived';
+  editorContent?: string;  // Rich content below form (Jodit Editor HTML)
 }
 
 export interface Form extends FormData {
@@ -49,6 +50,7 @@ export interface Form extends FormData {
   updated_at: string;
   published_at?: string;
   submission_count: number;
+  editorContent?: string;  // Rich content below form (Jodit Editor HTML)
 }
 
 /**

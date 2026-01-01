@@ -92,6 +92,7 @@ export interface FormSchema {
   fields: FormFieldData[];
   globalStyles?: GlobalStyles;
   customCSS?: string;
+  editorContent?: string;  // Rich content below form (Jodit Editor HTML)
 }
 
 export interface EditorState {

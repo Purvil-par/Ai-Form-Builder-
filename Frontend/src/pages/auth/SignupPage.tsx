@@ -140,20 +140,20 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-dark-bg flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-bg-secondary flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-primary-600/10 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-primary-600/30">
-            <Sparkles className="w-5 h-5 text-secondary-500" />
+          <div className="inline-flex items-center gap-2 bg-accent-purple px-4 py-2 rounded-full mb-4">
+            <Sparkles className="w-5 h-5 text-primary-500" />
             <span className="text-text-primary font-medium">AI Form Builder</span>
           </div>
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Create Account</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-text-primary mb-2">Create Account</h1>
           <p className="text-text-secondary">Start building amazing forms with AI</p>
         </div>
 
         {/* Signup Form */}
-        <div className="bg-dark-card border border-dark-border rounded-2xl p-8 shadow-neon-glow">
+        <div className="bg-white border border-border rounded-xl p-8 shadow-card">
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -168,13 +168,13 @@ export default function SignupPage() {
                 Full Name (Optional)
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                 <input
                   type="text"
                   name="full_name"
                   value={formData.full_name}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-3 bg-dark-bg border border-dark-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-white border border-border rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                   placeholder="John Doe"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2 focus:ring-offset-dark-card disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 bg-primary-500 text-white rounded-lg font-medium hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-sm"
             >
               {isLoading ? (
                 <>
@@ -271,10 +271,10 @@ export default function SignupPage() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-dark-border"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-dark-card text-text-secondary">Or continue with</span>
+              <span className="px-4 bg-white text-text-muted">Or continue with</span>
             </div>
           </div>
 
@@ -283,7 +283,7 @@ export default function SignupPage() {
             type="button"
             onClick={handleGoogleSignup}
             disabled={isLoading}
-            className="w-full py-3 px-4 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 focus:ring-offset-dark-card disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 border border-gray-300"
+            className="w-full py-3 px-4 bg-white text-gray-900 rounded-lg font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3 border border-border shadow-sm"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -307,11 +307,11 @@ export default function SignupPage() {
           </button>
 
           {/* Login Link */}
-          <p className="mt-6 text-center text-sm text-text-secondary">
+          <p className="mt-6 text-center text-sm text-text-muted">
             Already have an account?{' '}
             <Link
               to="/login"
-              className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
+              className="text-primary-500 hover:text-primary-600 font-medium transition-colors"
             >
               Sign in
             </Link>

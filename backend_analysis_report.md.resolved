@@ -1,0 +1,341 @@
+# 🔧 Backend Code Analysis Report
+
+> **AI Form Builder** - Complete Backend Architecture Documentation
+
+---
+
+## 📂 Folder Structure Overview
+
+```
+Backend/
+├── app.py                    # Main FastAPI application
+├── config.py                 # Environment configuration
+├── form_prompts.py           # Pre-written AI prompts for form types
+├── llm_parser.py             # LLM response parsing utilities
+├── session_manager.py        # AI conversation session management
+├── requirements.txt          # Python dependencies
+├── auth/                     # Authentication module
+│   ├── google_oauth.py       # Google OAuth handler
+│   ├── jwt_handler.py        # JWT token management
+│   ├── middleware.py         # Auth middleware/dependency
+│   └── password.py           # Password hashing (bcrypt)
+├── database/                 # Database layer
+│   ├── connection.py         # MongoDB connection management
+│   └── repositories.py       # Data access repositories
+├── models/                   # Pydantic schemas
+│   ├── user.py               # User models
+│   ├── form_models.py        # Form models
+│   └── submission.py         # Submission models
+└── routes/                   # API route handlers
+    ├── auth_routes.py        # Authentication endpoints
+    ├── form_routes.py        # Form CRUD endpoints
+    └── submission_routes.py  # Form submission endpoints
+```
+
+---
+
+## 📄 File-wise Code Description
+
+### 1. [app.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/app.py) - Main Application Entry Point
+| Component | Description |
+|-----------|-------------|
+| **FastAPI App** | Main application with CORS middleware, router registration |
+| **LLM Setup** | OpenAI GPT-4o configuration with 16000 max tokens for large forms |
+| **System Prompt** | Enhanced AI prompt for form generation with JSON rules |
+| **AI Endpoints** | `/init-form` and `/submit-answer` for AI-driven form creation |
+| **Helper Functions** | [call_llm()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/app.py#196-206), [save_ai_generated_form()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/app.py#524-572) for LLM interaction |
+
+**Use Cases:**
+- AI form generation workflow initialization
+- Processing user answers during AI conversation
+- Saving AI-generated forms to database
+
+---
+
+### 2. [config.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/config.py) - Configuration Management
+| Setting Category | Settings |
+|------------------|----------|
+| **OpenAI** | `OPENAI_API_KEY` |
+| **MongoDB** | `MONGODB_URL`, `MONGODB_DB_NAME` |
+| **JWT** | `JWT_SECRET_KEY`, `JWT_ALGORITHM`, token expiry settings |
+| **Google OAuth** | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` |
+| **Email (Optional)** | SMTP settings for email functionality |
+| **Rate Limiting** | `RATE_LIMIT_PER_MINUTE`, `FORM_SUBMISSION_RATE_LIMIT` |
+
+---
+
+### 3. [form_prompts.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py) - AI Prompt Templates
+| Function | Description |
+|----------|-------------|
+| [get_form_prompt()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py#215-232) | Get pre-written prompt for a specific form type |
+| [get_available_form_types()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py#234-243) | Return list of all supported form types |
+| [is_blank_form()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py#245-256) | Check if form type is user-defined (blank) |
+| [wrap_user_prompt()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py#258-297) | Wrap user prompts with guardrails and instructions |
+
+**Supported Form Types:**
+- `registration` - Event/service registration
+- `admission` - School/college admissions
+- `consent` - Legal consent and agreements
+- `complaint` - Issue/grievance reporting
+- `request` - General service requests
+- `evaluation` - Performance assessments
+- [blank](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/form_prompts.py#245-256) - Custom user-defined forms
+
+---
+
+### 4. [llm_parser.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py) - LLM Response Parser
+| Function | Description |
+|----------|-------------|
+| [repair_truncated_json()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#12-74) | Fix broken JSON from large form responses |
+| [parse_llm_response()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#76-181) | Parse LLM response for single-question mode |
+| [extract_questions()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#183-234) | Extract and normalize questions to checkbox format |
+| [generate_question_id()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#236-254) | Create unique snake_case IDs from question text |
+| [extract_form_schema()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#256-358) | Extract form schema from LLM response (with truncation repair) |
+| [is_final_form()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#360-400) | Detect if response contains final form vs questions |
+| [normalize_checkbox_answers()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#402-431) | Convert checkbox selections to natural language |
+| [validate_form_schema()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/llm_parser.py#433-470) | Validate form schema has required fields |
+
+---
+
+### 5. [session_manager.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/session_manager.py) - AI Session Manager
+| Class/Function | Description |
+|----------------|-------------|
+| [SessionStage](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/session_manager.py#13-19) | Enum: `INITIALIZED`, `QUESTION`, `FORM_SCHEMA`, `COMPLETED` |
+| [FormSession](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/session_manager.py#29-100) | Session data structure with conversation history |
+| [SessionManager](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/session_manager.py#102-197) | Manages all AI form builder sessions |
+| [get_session_manager()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/session_manager.py#203-206) | Get global session manager instance |
+
+**Session Features:**
+- 24-hour session expiration
+- Conversation history tracking
+- Question count tracking
+- Form ID association to prevent duplicates
+
+---
+
+## 📁 Auth Module Files
+
+### [auth/jwt_handler.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py)
+| Function | Description |
+|----------|-------------|
+| [create_access_token()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py#15-46) | Create JWT access token (30 min default) |
+| [create_refresh_token()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py#48-74) | Create JWT refresh token (7 days default) |
+| [verify_token()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py#76-104) | Verify token validity and type |
+| [decode_token()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py#106-127) | Decode JWT and return payload |
+| [get_token_expiry()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/jwt_handler.py#129-143) | Get token expiration datetime |
+
+---
+
+### [auth/middleware.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/middleware.py)
+| Function | Description |
+|----------|-------------|
+| [get_current_user()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/middleware.py#20-94) | Dependency to get authenticated user from token |
+| [get_current_user_optional()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/middleware.py#96-116) | Get user if authenticated, None otherwise |
+| [require_auth()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/middleware.py#118-126) | Decorator for requiring authentication |
+
+---
+
+### [auth/google_oauth.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/google_oauth.py)
+| Function | Description |
+|----------|-------------|
+| [verify_google_token()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/google_oauth.py#15-58) | Verify Google ID token and extract user info |
+| [get_google_oauth_url()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/google_oauth.py#60-80) | Generate Google OAuth authorization URL |
+
+---
+
+### [auth/password.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/password.py)
+| Function | Description |
+|----------|-------------|
+| [hash_password()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/password.py#13-41) | Hash password using bcrypt (12 rounds) |
+| [verify_password()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/password.py#43-68) | Verify password against bcrypt hash |
+| [needs_rehash()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/auth/password.py#70-85) | Check if password hash needs updating |
+
+---
+
+## 📁 Database Module Files
+
+### [database/connection.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py)
+| Function | Description |
+|----------|-------------|
+| [init_database()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py#18-59) | Initialize MongoDB connection with Motor async client |
+| [create_indexes()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py#61-84) | Create performance indexes on collections |
+| [get_database()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py#86-99) | Get current database instance |
+| [close_database()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py#101-111) | Close database connection gracefully |
+| [check_database_health()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/connection.py#114-129) | Health check for database connection |
+
+---
+
+### [database/repositories.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py)
+| Repository | Methods |
+|------------|---------|
+| **UserRepository** | [create()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#26-42), [create_from_google()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#43-60), [get_by_email()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#61-64), [get_by_google_id()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#65-68), [get_by_id()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#69-76), [update()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#136-146), [update_last_login()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#86-93) |
+| **FormRepository** | [create()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#26-42), [get_by_id()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#69-76), [get_by_slug()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#127-130), [get_user_forms()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/routes/form_routes.py#115-142), [update()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#136-146), [delete()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#147-151), [archive()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#152-159), [increment_submission_count()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#160-167), [slug_exists()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#168-172) |
+| **SubmissionRepository** | [create()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#26-42), [get_by_id()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#69-76), [get_by_session()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#206-216), [update_by_session()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#217-234), [get_form_submissions()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/routes/submission_routes.py#217-274), `count_form_submissions()`, [delete()](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#147-151) |
+
+---
+
+## 📁 Models Module Files
+
+### [models/user.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py)
+| Model | Description |
+|-------|-------------|
+| [UserCreate](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#42-58) | Registration schema with password validation |
+| [UserLogin](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#60-64) | Login credentials schema |
+| [UserUpdate](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#66-70) | Profile update schema |
+| [UserResponse](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#72-83) | API response schema (excludes sensitive data) |
+| [User](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#85-101) | Complete database model |
+| [GoogleUserInfo](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/user.py#103-112) | Google OAuth user information |
+
+---
+
+### [models/form_models.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py)
+| Model | Description |
+|-------|-------------|
+| [FormStatus](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#12-17) | Enum: `DRAFT`, `PUBLISHED`, `ARCHIVED` |
+| [FormField](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#19-35) | Individual form field schema |
+| [CTAButton](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#37-48) | Submit button configuration |
+| [GlobalStyles](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#50-58) | Form styling options |
+| [FormCreate](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#60-69) | Schema for creating new forms |
+| [FormUpdate](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#71-80) | Schema for updating forms |
+| [FormResponse](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/form_models.py#82-103) | API response schema |
+
+---
+
+### [models/submission.py](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/submission.py)
+| Model | Description |
+|-------|-------------|
+| [SubmissionCreate](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/submission.py#12-16) | Schema for new submission |
+| [SubmissionResponse](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/submission.py#18-30) | API response schema |
+| [Submission](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/models/submission.py#32-46) | Complete database model |
+
+---
+
+## 🌐 API Endpoints Summary
+
+### 🔐 Authentication Endpoints (`/api/auth`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/api/auth/register` | ❌ No | Register new user with email/password |
+| `POST` | `/api/auth/login` | ❌ No | Login with email/password |
+| `POST` | `/api/auth/google` | ❌ No | Google OAuth authentication |
+| `POST` | `/api/auth/refresh` | ❌ No | Refresh access token |
+| `GET` | `/api/auth/me` | ✅ Yes | Get current user info |
+| `POST` | `/api/auth/logout` | ✅ Yes | Logout user |
+
+**Use Cases:**
+- **Register**: Naya user create karna, password hash hota hai, tokens return hote hain
+- **Login**: Email/password se login, inactive accounts block
+- **Google**: Google OAuth se login/register, existing email se link
+- **Refresh**: Expired access token ko refresh token se renew karna
+- **Me**: Currently logged-in user ka data return karna
+- **Logout**: Client-side token delete karne ka confirmation
+
+---
+
+### 📝 Form Management Endpoints (`/api/forms`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/api/forms` | ✅ Yes | Create new form |
+| `GET` | `/api/forms` | ✅ Yes | Get all user's forms |
+| `GET` | `/api/forms/{form_id}` | ✅ Yes | Get form by ID (owner only) |
+| `GET` | `/api/forms/public/{slug}` | ❌ No | Get published form by slug |
+| `PUT` | `/api/forms/{form_id}` | ✅ Yes | Update form (owner only) |
+| `DELETE` | `/api/forms/{form_id}` | ✅ Yes | Delete/archive form (owner only) |
+| `POST` | `/api/forms/{form_id}/publish` | ✅ Yes | Publish draft form |
+
+**Use Cases:**
+- **Create Form**: Naya form banao, unique slug generate hota hai
+- **Get Forms**: User ke saare forms list karo with pagination
+- **Get Form by ID**: Single form details dekhna (ownership check)
+- **Public Form**: Published forms ko bina login access karo
+- **Update Form**: Form title, fields, styles update karo
+- **Delete Form**: Form delete ya archive karo (`permanent=true` for hard delete)
+- **Publish**: Draft form ko published status dena
+
+---
+
+### 📊 Submission Endpoints (`/api/`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/api/forms/{slug}/submit` | ❌ No | Submit form response |
+| `GET` | `/api/forms/{slug}/my-submission` | ❌ No | Get previous submission (prefill) |
+| `GET` | `/api/forms/{form_id}/submissions` | ✅ Yes | Get all form submissions |
+| `GET` | `/api/submissions/{submission_id}` | ✅ Yes | Get single submission |
+| `DELETE` | `/api/submissions/{submission_id}` | ✅ Yes | Delete submission |
+
+**Use Cases:**
+- **Submit Form**: Form response submit karo, rate limiting applied, session-based resubmission support
+- **My Submission**: Session ID se previous submission lao for prefill
+- **Get Submissions**: Form owner ko saare submissions dekhna
+- **Get Submission**: Single submission details
+- **Delete Submission**: Submission delete karo (owner only)
+
+---
+
+### 🤖 AI Form Generation Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `POST` | `/init-form` | ✅ Yes | Initialize AI form creation |
+| `POST` | `/submit-answer` | ✅ Yes | Submit answer to AI question |
+| `GET` | `/form-types` | ❌ No | Get available form types |
+
+**Use Cases:**
+- **Init Form**: AI-driven form creation start karo, form type ya custom prompt ke saath
+- **Submit Answer**: AI ke question ka answer do, conversation continue karo
+- **Form Types**: Available form templates ki list
+
+---
+
+### 🔧 Utility Endpoints
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| `GET` | `/` | ❌ No | API root with info |
+| `GET` | `/favicon.ico` | ❌ No | Favicon handler |
+| `GET` | `/health` | ❌ No | Health check with DB status |
+
+---
+
+## 🛡️ Security Features
+
+| Feature | Implementation |
+|---------|----------------|
+| **Password Hashing** | bcrypt with 12 rounds, SHA256 pre-hash for long passwords |
+| **JWT Tokens** | Access (30 min) + Refresh (7 days) tokens |
+| **CORS** | Configured for all origins (development mode) |
+| **Rate Limiting** | Per-IP submission tracking (10/hour per form) |
+| **Ownership Check** | All form/submission operations verify owner |
+| **Input Validation** | Pydantic models for request/response validation |
+
+---
+
+## 📊 Database Collections
+
+| Collection | Indexes |
+|------------|---------|
+| **users** | [email](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#61-64) (unique), [google_id](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#65-68) (sparse) |
+| **forms** | `owner_id`, [slug](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/database/repositories.py#168-172) (unique), [(owner_id, created_at)](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/app.py#209-243), `status` |
+| **submissions** | `form_id`, [(form_id, submitted_at)](file:///c:/Users/Purvil/Desktop/Ai%20Form%20Builder/Backend/app.py#209-243), `submitted_at` |
+
+---
+
+## 🔗 Technology Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **FastAPI** | Web framework |
+| **MongoDB** | Database (with Motor async driver) |
+| **OpenAI GPT-4o** | AI form generation |
+| **LangChain** | LLM integration |
+| **Python-Jose** | JWT handling |
+| **bcrypt** | Password hashing |
+| **Pydantic** | Data validation |
+| **Google OAuth2** | Social authentication |
+
+---
+
+> 📝 **Report Generated:** January 1, 2026

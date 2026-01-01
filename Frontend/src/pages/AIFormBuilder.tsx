@@ -53,12 +53,13 @@ const AIFormBuilder: React.FC = () => {
         }
     }, [formType]);
 
-    const initializeForm = async (userPrompt?: string) => {
+    const initializeForm = async (userPrompt?: string, fileContent?: string) => {
         try {
             setStage('initializing');
             setError('');
 
-            const response = await initFormCreation(formType!, userPrompt);
+            // Pass file content to API if provided
+            const response = await initFormCreation(formType!, userPrompt, undefined, fileContent);
             
             console.log('📥 RAW RESPONSE FROM BACKEND:', response);
             console.log('📥 Response keys:', Object.keys(response));
@@ -186,11 +187,12 @@ const AIFormBuilder: React.FC = () => {
         setStage('editor');
     };
 
-    const handleCustomPromptSubmit = (prompt: string) => {
+    const handleCustomPromptSubmit = (prompt: string, fileContent?: string) => {
         setCustomPrompt(prompt);
         setShowPromptInput(false);
         setIsLoading(true);
-        initializeForm(prompt).finally(() => setIsLoading(false));
+        // Pass file content along with prompt
+        initializeForm(prompt, fileContent).finally(() => setIsLoading(false));
     };
 
     const handleCustomPromptCancel = () => {
@@ -272,15 +274,15 @@ const AIFormBuilder: React.FC = () => {
             )}
 
             {!showEditor && (
-                <div className="min-h-screen bg-dark-bg py-12 px-4">
+                <div className="min-h-screen bg-bg-secondary py-12 px-4">
                     <div className="max-w-5xl mx-auto">
                         {/* Header */}
                         <div className="text-center mb-12">
-                            <div className="inline-flex items-center gap-2 bg-primary-600/10 backdrop-blur-sm px-4 py-2 rounded-full mb-4 border border-primary-600/30">
-                                <Sparkles className="w-5 h-5 text-secondary-500" />
+                            <div className="inline-flex items-center gap-2 bg-accent-purple px-4 py-2 rounded-full mb-4">
+                                <Sparkles className="w-5 h-5 text-primary-500" />
                                 <span className="text-text-primary font-medium">AI-Powered Form Builder</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-bold text-text-primary mb-4">
+                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-text-primary mb-4">
                                 {formType === 'blank' ? 'Custom Form' : getFormTypeTitle(formType || '')}
                             </h1>
                             {stage === 'questions' && currentQuestion && (
@@ -291,11 +293,11 @@ const AIFormBuilder: React.FC = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="bg-dark-card border border-dark-border rounded-2xl p-8 shadow-neon-glow">
+                        <div className="bg-white border border-border rounded-xl p-8 shadow-card">
                             {/* Initializing State */}
                             {stage === 'initializing' && !showPromptInput && (
                                 <div className="text-center py-12">
-                                    <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
+                                    <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
                                     <p className="text-text-secondary text-lg">
                                         AI is analyzing your form requirements...
                                     </p>
@@ -326,7 +328,7 @@ const AIFormBuilder: React.FC = () => {
                             {/* Error State */}
                             {stage === 'error' && (
                                 <div className="text-center py-12">
-                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 mb-4">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 mb-4">
                                         <AlertCircle className="w-8 h-8 text-red-500" />
                                     </div>
                                     <h3 className="text-xl font-semibold text-text-primary mb-2">
@@ -337,7 +339,7 @@ const AIFormBuilder: React.FC = () => {
                                     </p>
                                     <button
                                         onClick={() => initializeForm()}
-                                        className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                                        className="px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors shadow-sm"
                                     >
                                         Try Again
                                     </button>

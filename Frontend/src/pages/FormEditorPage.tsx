@@ -36,13 +36,23 @@ const FormEditorPage: React.FC = () => {
           fields: data.fields || [],
           globalStyles: data.globalStyles || {},
           ctaButton: data.ctaButton || undefined,
+          editorContent: data.editorContent || '', // Include editor content
         };
         
         setFormData(schema);
         setError(null);
       } catch (err: any) {
         console.error('Error loading form:', err);
-        setError(err.message || 'Failed to load form');
+        
+        // Check if it's a permission error (403 Forbidden)
+        if (err.message && err.message.includes("permission")) {
+          console.log('Permission denied - redirecting to public form page');
+          // Try to get the form's slug and redirect to public page
+          // For now, show error and suggest using public link
+          setError("You don't have permission to edit this form. Please use the public form link to view or submit.");
+        } else {
+          setError(err.message || 'Failed to load form');
+        }
       } finally {
         setLoading(false);
       }
@@ -87,12 +97,23 @@ const FormEditorPage: React.FC = () => {
   }
 
   if (error || !formData) {
+    const isPermissionError = error && error.includes("permission");
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Form</h2>
-            <p className="text-red-600 mb-4">{error || 'Form not found'}</p>
+          <div className={`border rounded-lg p-6 ${isPermissionError ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+            <h2 className={`text-xl font-semibold mb-2 ${isPermissionError ? 'text-yellow-800' : 'text-red-800'}`}>
+              {isPermissionError ? '🔒 Access Denied' : 'Error Loading Form'}
+            </h2>
+            <p className={`mb-4 ${isPermissionError ? 'text-yellow-600' : 'text-red-600'}`}>
+              {error || 'Form not found'}
+            </p>
+            {isPermissionError && (
+              <p className="text-sm text-gray-600 mb-4">
+                Only the form owner can edit this form. If you want to view or submit this form, please ask the owner for the public form link.
+              </p>
+            )}
             <button
               onClick={handleClose}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

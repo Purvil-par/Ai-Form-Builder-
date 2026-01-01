@@ -67,9 +67,11 @@ async def submit_form(
     Submit a form (public endpoint with rate limiting)
     
     No authentication required. Form must be published.
+    Supports session-based submission tracking for prefill and resubmission.
     
     - **slug**: Form slug
     - **form_data**: Submitted form data (field_id -> value mapping)
+    - **session_id**: Optional session ID for tracking returning users (in metadata)
     """
     form_repo = FormRepository()
     submission_repo = SubmissionRepository()
@@ -92,34 +94,59 @@ async def submit_form(
     # Get client IP
     client_ip = request.client.host if request.client else "unknown"
     
-    # Check rate limit
-    from config import settings
-    if not check_rate_limit(client_ip, str(form["_id"]), settings.FORM_SUBMISSION_RATE_LIMIT):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many submissions. Please try again later."
-        )
+    # Get session ID from metadata (for prefill/resubmission tracking)
+    session_id = None
+    if submission_data.metadata and "session_id" in submission_data.metadata:
+        session_id = submission_data.metadata["session_id"]
     
     # Get user agent
     user_agent = request.headers.get("user-agent")
     
-    # Create submission
+    form_id = str(form["_id"])
+    
+    # Check if this session already has a submission (for resubmission)
+    existing_submission = None
+    if session_id:
+        existing_submission = await submission_repo.get_by_session(form_id, session_id)
+    
     try:
-        submission = await submission_repo.create(
-            submission_data,
-            str(form["_id"]),
-            client_ip,
-            user_agent
-        )
+        if existing_submission:
+            # Update existing submission instead of creating new
+            submission = await submission_repo.update_by_session(
+                form_id,
+                session_id,
+                submission_data.form_data
+            )
+            logger.info(f"Form resubmitted: {slug} from session {session_id}")
+        else:
+            # Check rate limit only for new submissions
+            from config import settings
+            if not check_rate_limit(client_ip, form_id, settings.FORM_SUBMISSION_RATE_LIMIT):
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many submissions. Please try again later."
+                )
+            
+            # Create new submission
+            submission = await submission_repo.create(
+                submission_data,
+                form_id,
+                client_ip,
+                user_agent,
+                session_id
+            )
+            
+            # Increment form submission count only for new submissions
+            await form_repo.increment_submission_count(form_id)
+            logger.info(f"Form submitted: {slug} from IP {client_ip}")
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error creating submission: {e}")
+        logger.error(f"Error creating/updating submission: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to submit form"
         )
-    
-    # Increment form submission count
-    await form_repo.increment_submission_count(str(form["_id"]))
     
     # Create response
     submission_response = SubmissionResponse(
@@ -131,11 +158,60 @@ async def submit_form(
         user_agent=submission.get("user_agent")
     )
     
-    logger.info(f"Form submitted: {slug} from IP {client_ip}")
-    
-    # TODO: Send email notification to form owner
-    
     return submission_response
+
+
+@router.get("/forms/{slug}/my-submission")
+async def get_my_submission(
+    slug: str,
+    session_id: str,
+    request: Request
+):
+    """
+    Get user's previous submission for prefill (public endpoint)
+    
+    No authentication required. Used for form prefill when user returns.
+    
+    - **slug**: Form slug
+    - **session_id**: User's session ID from localStorage
+    """
+    form_repo = FormRepository()
+    submission_repo = SubmissionRepository()
+    
+    # Get form by slug
+    form = await form_repo.get_by_slug(slug)
+    if not form:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    # Check if form is published
+    if form["status"] != FormStatus.PUBLISHED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form not found"
+        )
+    
+    form_id = str(form["_id"])
+    
+    # Get submission by session
+    submission = await submission_repo.get_by_session(form_id, session_id)
+    
+    if not submission:
+        # No previous submission found - return empty response
+        return {"has_submission": False, "submission": None}
+    
+    # Return submission data for prefill
+    return {
+        "has_submission": True,
+        "submission": {
+            "id": str(submission["_id"]),
+            "form_data": submission["form_data"],
+            "submitted_at": submission["submitted_at"].isoformat() if submission.get("submitted_at") else None,
+            "updated_at": submission.get("updated_at").isoformat() if submission.get("updated_at") else None
+        }
+    }
 
 
 @router.get("/forms/{form_id}/submissions", response_model=List[SubmissionResponse])

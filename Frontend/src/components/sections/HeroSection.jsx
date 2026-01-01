@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Zap, LogIn } from 'lucide-react';
+import { Sparkles, ArrowRight, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../ui/Button';
 
 /**
- * Hero Section Component
- * Features gradient background, animated headline, and dual CTAs
+ * Hero Section Component - Canva Style
+ * Clean, simple, and professional hero with clear value proposition
  */
 const HeroSection = () => {
     const navigate = useNavigate();
@@ -25,11 +25,11 @@ const HeroSection = () => {
     };
 
     return (
-        <section className="relative min-h-screen flex items-center justify-center bg-dark-bg overflow-hidden">
-            {/* Animated Background Elements */}
+        <section className="relative min-h-screen flex items-center justify-center bg-white overflow-hidden">
+            {/* Subtle Background Accent */}
             <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-600 opacity-20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-secondary-500 opacity-20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-br from-accent-purple to-transparent opacity-30 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-gradient-to-tr from-accent-blue to-transparent opacity-20 blur-3xl"></div>
             </div>
 
             {/* Top Right Auth Buttons */}
@@ -38,7 +38,7 @@ const HeroSection = () => {
                     <Button
                         variant="ghost"
                         onClick={handleLogin}
-                        className="text-text-primary hover:text-primary-600"
+                        className="text-text-secondary hover:text-text-primary"
                     >
                         <div className="flex items-center gap-2">
                             <LogIn className="w-4 h-4" />
@@ -66,44 +66,42 @@ const HeroSection = () => {
             )}
 
             {/* Content */}
-            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                {/* Icon Badge */}
-                <div className="inline-flex items-center gap-2 bg-primary-600/10 backdrop-blur-sm px-4 py-2 rounded-full mb-8 animate-fade-in border border-primary-600/30">
-                    <Sparkles className="w-5 h-5 text-secondary-500" />
-                    <span className="text-text-primary font-medium">AI-Powered Form Generation</span>
+            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-20">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 bg-accent-purple px-4 py-2 rounded-full mb-8 animate-fade-in">
+                    <Sparkles className="w-4 h-4 text-primary-500" />
+                    <span className="text-sm font-medium text-text-primary">AI-Powered Form Builder</span>
                 </div>
 
                 {/* Headline */}
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-text-primary mb-6 animate-fade-in leading-tight">
-                    Build Smart Forms
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-text-primary mb-6 animate-fade-in leading-tight">
+                    Create Beautiful Forms
                     <br />
-                    <span className="bg-gradient-to-r from-primary-600 to-secondary-500 bg-clip-text text-transparent">
-                        Instantly with AI
-                    </span>
+                    <span className="text-primary-500">with AI — In Minutes</span>
                 </h1>
 
                 {/* Sub-headline */}
-                <p className="text-xl md:text-2xl text-text-secondary mb-12 max-w-3xl mx-auto animate-slide-up">
-                    Create professional forms in seconds using AI — no coding required.
+                <p className="text-lg sm:text-xl md:text-2xl text-text-secondary mb-12 max-w-3xl mx-auto animate-slide-up">
+                    Build professional forms effortlessly using AI. No coding required, just describe what you need.
                 </p>
 
                 {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-slide-up mb-16">
                     <Button
                         variant="primary"
-                        className="min-w-[200px]"
+                        className="min-w-[200px] text-base sm:text-lg px-8 py-4"
                         onClick={handleCreateForm}
                     >
                         <div className="flex items-center gap-2">
-                            <Zap className="w-5 h-5" />
                             <span>{isAuthenticated ? 'Create Form with AI' : 'Get Started Free'}</span>
+                            <ArrowRight className="w-5 h-5" />
                         </div>
                     </Button>
 
                     {!isAuthenticated && (
                         <Button
                             variant="outline"
-                            className="min-w-[200px]"
+                            className="min-w-[200px] text-base sm:text-lg px-8 py-4"
                             onClick={handleLogin}
                         >
                             Sign In
@@ -111,22 +109,25 @@ const HeroSection = () => {
                     )}
                 </div>
 
-                {/* Abstract AI Graphic Placeholder */}
-                <div className="mt-16 animate-fade-in">
+                {/* Simple Visual Element */}
+                {/* <div className="mt-12 animate-fade-in">
                     <div className="relative max-w-4xl mx-auto">
-                        <div className="bg-dark-card/50 backdrop-blur-md rounded-3xl p-8 border border-primary-600/20 shadow-neon-glow">
-                            <div className="grid grid-cols-3 gap-4">
-                                {[...Array(6)].map((_, i) => (
-                                    <div
-                                        key={i}
-                                        className="h-4 bg-gradient-to-r from-primary-600/30 to-secondary-500/30 rounded animate-pulse"
-                                        style={{ animationDelay: `${i * 100}ms` }}
-                                    ></div>
-                                ))}
+                        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-border shadow-lg">
+                            <div className="space-y-4">
+                                <div className="h-3 bg-gradient-to-r from-primary-200 to-primary-100 rounded-full w-3/4"></div>
+                                <div className="h-3 bg-gradient-to-r from-secondary-200 to-secondary-100 rounded-full w-1/2"></div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                                    <div className="h-12 bg-bg-secondary rounded-lg"></div>
+                                    <div className="h-12 bg-bg-secondary rounded-lg"></div>
+                                </div>
+                                <div className="h-24 bg-bg-secondary rounded-lg"></div>
+                                <div className="flex justify-end">
+                                    <div className="h-10 w-32 bg-primary-500 rounded-lg"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </div> */}
             </div>
         </section>
     );

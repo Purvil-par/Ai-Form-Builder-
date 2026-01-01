@@ -3,10 +3,12 @@
  * Displays detailed information about a single form submission
  */
 
-import React from 'react';
-import { X, Copy, Trash2, Calendar, Globe, Monitor } from 'lucide-react';
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { X, Copy, Trash2, Calendar, Globe, Monitor, Eye, Download, FileText } from 'lucide-react';
 import type { Submission } from '../api/submissionsService';
 import { getSubmissionId } from '../api/submissionsService';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 interface SubmissionDetailViewProps {
   submission: Submission;
@@ -21,18 +23,21 @@ export default function SubmissionDetailView({
   onClose,
   onDelete
 }: SubmissionDetailViewProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const handleCopy = () => {
     const text = JSON.stringify(submission.form_data, null, 2);
     navigator.clipboard.writeText(text);
-    alert('Submission data copied to clipboard!');
+    toast.success('Submission data copied to clipboard!');
   };
 
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this submission? This action cannot be undone.')) {
-      const submissionId = getSubmissionId(submission);
-      console.log('Deleting submission with ID:', submissionId);
-      onDelete(submissionId);
-    }
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = () => {
+    const submissionId = getSubmissionId(submission);
+    console.log('Deleting submission with ID:', submissionId);
+    onDelete(submissionId);
   };
 
   const formatValue = (value: any): string => {
@@ -42,7 +47,68 @@ export default function SubmissionDetailView({
     if (typeof value === 'boolean') {
       return value ? 'Yes' : 'No';
     }
+    // Don't format file objects as string
+    if (typeof value === 'object' && value !== null && value.data) {
+      return ''; // Will be handled by renderFileValue
+    }
     return String(value || 'N/A');
+  };
+
+  // Render file value with View/Download options
+  const renderFileValue = (value: any) => {
+    // Check if it's a file object with data
+    if (typeof value === 'object' && value !== null && value.data) {
+      return (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-500" />
+            <span className="text-gray-900">{value.name || 'Uploaded file'}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const newWindow = window.open();
+                if (newWindow) {
+                  if (value.type?.startsWith('image/')) {
+                    newWindow.document.write(`<img src="${value.data}" alt="${value.name}" style="max-width:100%;height:auto;" />`);
+                  } else if (value.type === 'application/pdf') {
+                    newWindow.document.write(`<iframe src="${value.data}" width="100%" height="100%" style="border:none;"></iframe>`);
+                  } else {
+                    newWindow.location.href = value.data;
+                  }
+                }
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              View
+            </button>
+            <a
+              href={value.data}
+              download={value.name}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </a>
+          </div>
+        </div>
+      );
+    }
+    
+    // If it's just a filename string (legacy)
+    if (typeof value === 'string' && value) {
+      return (
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-gray-500" />
+          <span className="text-gray-900">{value}</span>
+          <span className="text-xs text-gray-500">(File data not available)</span>
+        </div>
+      );
+    }
+    
+    return <span className="text-gray-500">N/A</span>;
   };
 
   return (
@@ -97,6 +163,9 @@ export default function SubmissionDetailView({
             <div className="space-y-4">
               {formFields.map(field => {
                 const value = submission.form_data[field.id];
+                const isFileField = field.type === 'file' || 
+                  (typeof value === 'object' && value !== null && (value.data || value.name));
+                
                 return (
                   <div key={field.id} className="border-b border-gray-200 pb-4 last:border-0">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -104,7 +173,7 @@ export default function SubmissionDetailView({
                       {field.required && <span className="text-red-500 ml-1">*</span>}
                     </label>
                     <div className="text-gray-900 bg-gray-50 rounded-lg p-3">
-                      {formatValue(value)}
+                      {isFileField ? renderFileValue(value) : formatValue(value)}
                     </div>
                   </div>
                 );
@@ -132,6 +201,18 @@ export default function SubmissionDetailView({
           </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Submission"
+        message="Are you sure you want to delete this submission? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 }

@@ -178,15 +178,17 @@ class SubmissionRepository:
         self.db: AsyncIOMotorDatabase = get_database()
         self.collection = self.db.submissions
     
-    async def create(self, submission_data: SubmissionCreate, form_id: str, ip_address: str = None, user_agent: str = None) -> Dict[str, Any]:
+    async def create(self, submission_data: SubmissionCreate, form_id: str, ip_address: str = None, user_agent: str = None, session_id: str = None) -> Dict[str, Any]:
         """Create a new submission"""
         submission_dict = {
             "form_id": form_id,
             "form_data": submission_data.form_data,
             "metadata": submission_data.metadata,
             "submitted_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
             "ip_address": ip_address,
-            "user_agent": user_agent
+            "user_agent": user_agent,
+            "session_id": session_id  # For tracking returning users
         }
         
         result = await self.collection.insert_one(submission_dict)
@@ -199,6 +201,35 @@ class SubmissionRepository:
             return await self.collection.find_one({"_id": ObjectId(submission_id)})
         except Exception as e:
             logger.error(f"Error getting submission by ID: {e}")
+            return None
+    
+    async def get_by_session(self, form_id: str, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get submission by form ID and session ID (for prefill)"""
+        try:
+            return await self.collection.find_one({
+                "form_id": form_id,
+                "session_id": session_id
+            })
+        except Exception as e:
+            logger.error(f"Error getting submission by session: {e}")
+            return None
+    
+    async def update_by_session(self, form_id: str, session_id: str, form_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update existing submission by session ID"""
+        try:
+            result = await self.collection.find_one_and_update(
+                {"form_id": form_id, "session_id": session_id},
+                {
+                    "$set": {
+                        "form_data": form_data,
+                        "updated_at": datetime.utcnow()
+                    }
+                },
+                return_document=True
+            )
+            return result
+        except Exception as e:
+            logger.error(f"Error updating submission by session: {e}")
             return None
     
     async def get_form_submissions(self, form_id: str, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
@@ -214,3 +245,4 @@ class SubmissionRepository:
         """Delete submission"""
         result = await self.collection.delete_one({"_id": ObjectId(submission_id)})
         return result.deleted_count > 0
+
