@@ -38,6 +38,7 @@ export interface FormData {
   };
   status?: 'draft' | 'published' | 'archived';
   editorContent?: string;  // Rich content below form (Jodit Editor HTML)
+  backgroundImage?: string | null; // Base64 data URL for background image, null to remove
 }
 
 export interface Form extends FormData {
@@ -51,6 +52,7 @@ export interface Form extends FormData {
   published_at?: string;
   submission_count: number;
   editorContent?: string;  // Rich content below form (Jodit Editor HTML)
+  backgroundImage?: string; // Base64 data URL for background image
 }
 
 /**

@@ -231,7 +231,7 @@ export default function PublicFormPage() {
                   onChange={(e) => handleInputChange(field.id, e.target.value)}
                   style={{ accentColor: fieldStyle.color }}
                 />
-                <span style={{ fontFamily: fieldStyle.fontFamily, fontSize: fieldStyle.fontSize, color: fieldStyle.color }}>
+                <span style={{ fontFamily: fieldStyle.fontFamily || 'Inter, system-ui, sans-serif', fontSize: fieldStyle.fontSize || '14px', color: fieldStyle.color || '#1f2937' }}>
                   {option}
                 </span>
               </label>
@@ -257,7 +257,7 @@ export default function PublicFormPage() {
                   }}
                   style={{ accentColor: fieldStyle.color }}
                 />
-                <span style={{ fontFamily: fieldStyle.fontFamily, fontSize: fieldStyle.fontSize, color: fieldStyle.color }}>
+                <span style={{ fontFamily: fieldStyle.fontFamily || 'Inter, system-ui, sans-serif', fontSize: fieldStyle.fontSize || '14px', color: fieldStyle.color || '#1f2937' }}>
                   {option}
                 </span>
               </label>
@@ -483,16 +483,38 @@ export default function PublicFormPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        {/* Form Header */}
-        <div className="bg-white border border-gray-200 rounded-xl p-8 mb-6 shadow-sm">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{form.title}</h1>
-          {form.description && (
-            <p className="text-gray-600">{form.description}</p>
+        {/* Single Form Container with Background */}
+        <div 
+          className="rounded-xl shadow-lg overflow-hidden relative"
+          style={{
+            ...(form.backgroundImage && {
+              backgroundImage: `url(${form.backgroundImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+            })
+          }}
+        >
+          {/* Light Overlay for slight text readability - mostly transparent */}
+          {form.backgroundImage && (
+            <div 
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.2) 100%)',
+              }}
+            />
           )}
-        </div>
+          
+          {/* Form Header */}
+          <div className={`p-8 border-b border-gray-200 relative z-10 ${form.backgroundImage ? '' : 'bg-white'}`}>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{form.title}</h1>
+            {form.description && (
+              <p className="text-gray-600">{form.description}</p>
+            )}
+          </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className={`p-8 relative z-10 ${form.backgroundImage ? '' : 'bg-white'}`}>
           {/* Previously Submitted Indicator */}
           {hasExistingSubmission && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6 flex items-center gap-2">
@@ -502,18 +524,28 @@ export default function PublicFormPage() {
               </span>
             </div>
           )}
-          {form.fields.map((field) => (
-            <div key={field.id} className="mb-6">
-              <label
-                htmlFor={field.id}
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                {field.label}
-                {field.required && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              {renderField(field)}
-            </div>
-          ))}
+          {form.fields.map((field, index) => {
+            // Calculate question number for ALL fields sequentially
+            const questionNumber = index + 1;
+            
+            return (
+              <div key={field.id} className="mb-6">
+                <label
+                  htmlFor={field.id}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  {questionNumber !== null && (
+                    <span className="font-semibold text-gray-900 mr-1">
+                      Q{questionNumber}.
+                    </span>
+                  )}
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {renderField(field)}
+              </div>
+            );
+          })}
 
           <button
             type="submit"
@@ -538,18 +570,19 @@ export default function PublicFormPage() {
                 : (form.ctaButton?.text || 'Submit')
             )}
           </button>
-        </form>
-        
-        {/* Rich Content Preview (Read-only) */}
-        {form.editorContent && (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 mt-6 shadow-sm">
-            <RichContentEditor
-              content={form.editorContent}
-              onChange={() => {}} // No-op for read-only
-              isReadOnly={true}
-            />
-          </div>
-        )}
+          </form>
+          
+          {/* Rich Content Preview (Read-only) */}
+          {form.editorContent && (
+            <div className={`p-8 border-t border-gray-200 relative z-10 ${form.backgroundImage ? '' : 'bg-white'}`}>
+              <RichContentEditor
+                content={form.editorContent}
+                onChange={() => {}} // No-op for read-only
+                isReadOnly={true}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

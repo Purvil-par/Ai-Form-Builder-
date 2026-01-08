@@ -37,6 +37,9 @@ const AIFormBuilder: React.FC = () => {
     // Editor mode state
     const [showEditor, setShowEditor] = useState(false);
 
+    // Source file state - stores the uploaded file/image for preview in editor
+    const [sourceFile, setSourceFile] = useState<string | null>(null);
+
     // Initialize form creation on mount
     useEffect(() => {
         if (!formType) {
@@ -53,13 +56,13 @@ const AIFormBuilder: React.FC = () => {
         }
     }, [formType]);
 
-    const initializeForm = async (userPrompt?: string, fileContent?: string) => {
+    const initializeForm = async (userPrompt?: string, fileContent?: string, imageData?: string) => {
         try {
             setStage('initializing');
             setError('');
 
-            // Pass file content to API if provided
-            const response = await initFormCreation(formType!, userPrompt, undefined, fileContent);
+            // Pass file content and image data to API if provided
+            const response = await initFormCreation(formType!, userPrompt, undefined, fileContent, imageData);
             
             console.log('📥 RAW RESPONSE FROM BACKEND:', response);
             console.log('📥 Response keys:', Object.keys(response));
@@ -187,12 +190,21 @@ const AIFormBuilder: React.FC = () => {
         setStage('editor');
     };
 
-    const handleCustomPromptSubmit = (prompt: string, fileContent?: string) => {
+    const handleCustomPromptSubmit = (prompt: string, fileContent?: string, imageData?: string) => {
         setCustomPrompt(prompt);
         setShowPromptInput(false);
         setIsLoading(true);
-        // Pass file content along with prompt
-        initializeForm(prompt, fileContent).finally(() => setIsLoading(false));
+        
+        // Store the source file/image for preview in editor
+        // Prefer imageData (visual preview) over fileContent (text)
+        if (imageData) {
+            setSourceFile(imageData);
+        } else if (fileContent) {
+            setSourceFile(fileContent);
+        }
+        
+        // Pass file content and image data along with prompt
+        initializeForm(prompt, fileContent, imageData).finally(() => setIsLoading(false));
     };
 
     const handleCustomPromptCancel = () => {
@@ -266,9 +278,12 @@ const AIFormBuilder: React.FC = () => {
                             backgroundColor: '#ffffff',
                             textColor: '#1f2937',
                         },
+                        // Include background image from form generation
+                        backgroundImage: (formSchema as any).backgroundImage || '',
                     }}
                     onSave={() => {}} // CanvasFormEditor handles saving internally
                     onClose={() => navigate('/dashboard')}
+                    sourceFile={sourceFile ?? undefined} // Pass source file for preview
                 />
                 </>
             )}

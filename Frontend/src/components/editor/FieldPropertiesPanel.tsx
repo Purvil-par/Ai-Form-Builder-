@@ -74,6 +74,29 @@ const FieldPropertiesPanel: React.FC<FieldPropertiesPanelProps> = ({
         </button>
       </div>
 
+      {/* Field Width */}
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">Field Width</label>
+        <div className="flex gap-2 items-center">
+          <input
+            type="range"
+            min="25"
+            max="100"
+            step="5"
+            value={parseInt(field.width) || 100}
+            onChange={(e) => onFieldUpdate({ width: `${e.target.value}%` })}
+            className="style-slider flex-1"
+          />
+          <input
+            type="text"
+            value={field.width || '100%'}
+            onChange={(e) => onFieldUpdate({ width: e.target.value })}
+            className="style-input w-16 text-center text-sm"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Resize the field width</p>
+      </div>
+
       {/* Type-Specific Options */}
       {(field.type === 'select' || field.type === 'radio' || field.type === 'checkbox') && (
         <div>

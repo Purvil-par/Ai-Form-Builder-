@@ -7,7 +7,7 @@ import { Sparkles, X, Lightbulb, Paperclip, Trash2, FileText, Image } from 'luci
  */
 
 interface BlankFormPromptProps {
-    onSubmit: (prompt: string, fileContent?: string) => void;
+    onSubmit: (prompt: string, fileContent?: string, imageData?: string) => void;
     onCancel: () => void;
     isLoading?: boolean;
 }
@@ -26,9 +26,18 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
     const [imageError, setImageError] = useState('');
     const imageInputRef = useRef<HTMLInputElement>(null);
 
-    // Supported file types
-    const SUPPORTED_EXTENSIONS = ['.txt', '.csv', '.json', '.md'];
-    const MAX_FILE_SIZE = 500 * 1024; // 500KB limit
+    // Supported file types - expanded to support more document formats
+    const SUPPORTED_EXTENSIONS = [
+        // Text files
+        '.txt', '.csv', '.json', '.md', '.rtf',
+        // Document files
+        '.pdf', '.doc', '.docx',
+        // Spreadsheet files
+        '.xls', '.xlsx',
+        // Code/Data files
+        '.xml', '.yaml', '.yml', '.html', '.htm'
+    ];
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB limit (increased for PDFs)
     const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB limit for images
 
@@ -49,8 +58,8 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
         }
 
         setError('');
-        // Pass both prompt and file content to parent
-        onSubmit(trimmedPrompt, fileContent || undefined);
+        // Pass prompt, file content, and image data to parent
+        onSubmit(trimmedPrompt, fileContent || undefined, imagePreview || undefined);
     };
 
     // Handle file selection
@@ -69,15 +78,28 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
 
         // Check file size
         if (file.size > MAX_FILE_SIZE) {
-            setFileError(`File too large. Maximum size: ${MAX_FILE_SIZE / 1024}KB`);
+            setFileError(`File too large. Maximum size: ${MAX_FILE_SIZE / (1024 * 1024)}MB`);
             return;
         }
 
+        // Binary file extensions that need special handling
+        const binaryExtensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx'];
+        const isBinaryFile = binaryExtensions.includes(extension);
+
         // Read file content
         try {
-            const content = await readFileAsText(file);
-            setUploadedFile(file);
-            setFileContent(content);
+            if (isBinaryFile) {
+                // For binary files, read as Base64 and include file info
+                const base64Content = await readFileAsBase64(file);
+                const fileInfo = `[BINARY FILE: ${file.name}]\n[TYPE: ${file.type}]\n[SIZE: ${(file.size / 1024).toFixed(2)}KB]\n[BASE64_CONTENT_START]\n${base64Content}\n[BASE64_CONTENT_END]`;
+                setUploadedFile(file);
+                setFileContent(fileInfo);
+            } else {
+                // For text files, read as plain text
+                const content = await readFileAsText(file);
+                setUploadedFile(file);
+                setFileContent(content);
+            }
         } catch (err) {
             setFileError('Failed to read file. Please try again.');
         }
@@ -90,6 +112,21 @@ const BlankFormPrompt: React.FC<BlankFormPromptProps> = ({ onSubmit, onCancel, i
             reader.onload = (e) => resolve(e.target?.result as string);
             reader.onerror = reject;
             reader.readAsText(file);
+        });
+    };
+
+    // Read file as Base64 (for binary files like PDF, DOCX)
+    const readFileAsBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const result = e.target?.result as string;
+                // Remove data URL prefix to get pure Base64
+                const base64 = result.split(',')[1] || result;
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
         });
     };
 

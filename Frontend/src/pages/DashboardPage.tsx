@@ -3,7 +3,7 @@
  * User's form management dashboard
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,7 +43,14 @@ export default function DashboardPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; formId: string; formTitle: string }>({ isOpen: false, formId: '', formTitle: '' });
   const [publishConfirm, setPublishConfirm] = useState<{ isOpen: boolean; formId: string }>({ isOpen: false, formId: '' });
 
+  // Ref to prevent double API calls (React StrictMode)
+  const isLoadedRef = useRef(false);
+
   useEffect(() => {
+    // Prevent double loading in React StrictMode
+    if (isLoadedRef.current) return;
+    isLoadedRef.current = true;
+    
     loadForms();
   }, []);
 

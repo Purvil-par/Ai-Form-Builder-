@@ -40,62 +40,97 @@
 /* Resize Handles */
 .resize-handle {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   background: #3b82f6;
-  border: 1px solid #ffffff;
+  border: 2px solid #ffffff;
   border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.2s;
+  z-index: 30;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.field-selected .resize-handle {
-  opacity: 1;
+.resize-handle:hover {
+  transform: scale(1.3);
+  background: #2563eb;
+}
+
+.resize-handle:active {
+  transform: scale(1.1);
+  background: #1d4ed8;
 }
 
 .resize-handle-nw {
-  top: -4px;
-  left: -4px;
+  top: -5px;
+  left: -5px;
   cursor: nw-resize;
 }
 .resize-handle-ne {
-  top: -4px;
-  right: -4px;
+  top: -5px;
+  right: -5px;
   cursor: ne-resize;
 }
 .resize-handle-sw {
-  bottom: -4px;
-  left: -4px;
+  bottom: -5px;
+  left: -5px;
   cursor: sw-resize;
 }
 .resize-handle-se {
-  bottom: -4px;
-  right: -4px;
+  bottom: -5px;
+  right: -5px;
   cursor: se-resize;
 }
 .resize-handle-n {
-  top: -4px;
+  top: -5px;
   left: 50%;
   transform: translateX(-50%);
   cursor: n-resize;
 }
+.resize-handle-n:hover {
+  transform: translateX(-50%) scale(1.3);
+}
 .resize-handle-s {
-  bottom: -4px;
+  bottom: -5px;
   left: 50%;
   transform: translateX(-50%);
   cursor: s-resize;
 }
+.resize-handle-s:hover {
+  transform: translateX(-50%) scale(1.3);
+}
 .resize-handle-w {
   top: 50%;
-  left: -4px;
+  left: -5px;
   transform: translateY(-50%);
   cursor: w-resize;
 }
+.resize-handle-w:hover {
+  transform: translateY(-50%) scale(1.3);
+}
 .resize-handle-e {
   top: 50%;
-  right: -4px;
+  right: -5px;
   transform: translateY(-50%);
   cursor: e-resize;
+}
+.resize-handle-e:hover {
+  transform: translateY(-50%) scale(1.3);
+}
+
+/* Selected Field - Canva Style */
+.selected-field {
+  position: relative;
+  z-index: 5;
+}
+
+.selected-field::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* Field Wrapper */
@@ -304,6 +339,7 @@
   background: #e5e7eb;
   outline: none;
   -webkit-appearance: none;
+  appearance: none;
 }
 
 .style-slider::-webkit-slider-thumb {

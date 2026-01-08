@@ -60,7 +60,8 @@ def form_to_response(form: dict) -> dict:
         "updated_at": serialize_datetime(form["updated_at"]),
         "published_at": serialize_datetime(form.get("published_at")),
         "submission_count": form.get("submission_count", 0),
-        "editorContent": form.get("editorContent")  # Rich content below form
+        "editorContent": form.get("editorContent"),  # Rich content below form
+        "backgroundImage": form.get("backgroundImage")  # Background image Base64
     }
 
 

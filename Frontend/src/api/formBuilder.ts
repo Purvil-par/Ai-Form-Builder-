@@ -92,12 +92,14 @@ export interface SessionState {
  * @param customPrompt - Optional custom prompt for blank forms
  * @param sessionId - Optional session ID to resume
  * @param fileContent - Optional file content to include with prompt
+ * @param imageData - Optional Base64 image for Vision API analysis
  */
 export async function initFormCreation(
     formType: string,
     customPrompt?: string,
     sessionId?: string,
-    fileContent?: string
+    fileContent?: string,
+    imageData?: string
 ): Promise<InitFormResponse> {
     const response = await fetch(`${API_BASE_URL}/api/ai/form/init`, {
         method: 'POST',
@@ -106,7 +108,8 @@ export async function initFormCreation(
             form_type: formType,
             custom_prompt: customPrompt,
             session_id: sessionId,
-            file_content: fileContent
+            file_content: fileContent,
+            image_data: imageData  // For Vision API analysis
         }),
     });
 

@@ -66,6 +66,7 @@ class FormCreate(BaseModel):
     ctaButton: Optional[Dict[str, Any]] = None
     status: FormStatus = FormStatus.DRAFT
     editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
+    backgroundImage: Optional[str] = None  # Base64 data URL for background image
 
 
 class FormUpdate(BaseModel):
@@ -77,6 +78,7 @@ class FormUpdate(BaseModel):
     ctaButton: Optional[Dict[str, Any]] = None
     status: Optional[FormStatus] = None
     editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
+    backgroundImage: Optional[str] = None  # Base64 data URL for background image
 
 
 class FormResponse(BaseModel):
@@ -97,6 +99,7 @@ class FormResponse(BaseModel):
     published_at: Optional[str] = None
     submission_count: int = 0
     editorContent: Optional[str] = None  # Rich content below form (Jodit Editor)
+    backgroundImage: Optional[str] = None  # Base64 data URL for background image
     
     class Config:
         from_attributes = True

@@ -14,7 +14,10 @@ import traceback
 # LangChain imports
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-    
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.memory import ConversationBufferMemory
+
+
 # Local imports
 from form_prompts import (
     get_form_prompt, 
@@ -40,8 +43,10 @@ from routes import auth_router, form_router, submission_router
 from auth.middleware import get_current_user
 from models.user import UserResponse
 from models.form_models import FormCreate, FormStatus
+from file_parser import detect_and_parse_file_content, analyze_image_for_form_generation, format_image_analysis_for_llm
 
 load_dotenv()
+
 
 # Initialize LLM with high max_tokens for large form generation
 # GPT-4o supports up to 16384 output tokens - we use 16000 to be safe
@@ -51,6 +56,73 @@ model = ChatOpenAI(
     api_key=settings.OPENAI_API_KEY,
     max_tokens=16000  # Increased for large forms (50+ MCQ questions)
 )
+
+# model = ChatGoogleGenerativeAI(
+#     model="gemini-2.5-flash",
+#     temperature=0,
+#     api_key=settings.GOOGLE_API_KEY,
+#     max_tokens=16000  # Increased for large forms (50+ MCQ questions)
+# )
+
+# OpenAI client for DALL-E image generation
+from openai import OpenAI
+openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+async def generate_background_image(theme: str) -> str:
+    """
+    Generate a background image using DALL-E based on user's theme selection.
+    
+    Args:
+        theme: Theme description from user's selection
+        
+    Returns:
+        Base64 data URL of generated image, or None if failed
+    """
+    import base64
+    import httpx
+    
+    # Skip if user chose no background
+    if not theme or "no background" in theme.lower() or "clean" in theme.lower() or "white" in theme.lower():
+        logger.info("User chose no background - skipping image generation")
+        return None
+    
+    # Create DALL-E prompt based on theme
+    prompt = f"A beautiful, professional background image for a form with theme: {theme}. Soft colors, subtle gradients, minimal design, suitable as form background, light and clean aesthetic, no text."
+    
+    try:
+        logger.info(f"🎨 Generating background with DALL-E for theme: {theme}")
+        
+        # Generate image using DALL-E
+        response = await asyncio.to_thread(
+            lambda: openai_client.images.generate(
+                model="dall-e-3",   
+                prompt=prompt,
+                size="1792x1024",
+                quality="standard",
+                n=1,
+            )
+        )
+            
+        image_url = response.data[0].url
+        logger.info(f"✅ DALL-E generated image URL received")
+        
+        # Download and convert to Base64
+        async with httpx.AsyncClient() as client:
+            img_response = await client.get(image_url)
+            if img_response.status_code == 200:
+                image_bytes = img_response.content
+                base64_image = base64.b64encode(image_bytes).decode('utf-8')
+                data_url = f"data:image/png;base64,{base64_image}"
+                logger.info(f"✅ Background image converted to Base64 ({len(data_url)} chars)")
+                return data_url
+        
+        logger.warning("⚠️ Failed to download generated image")
+        return None
+        
+    except Exception as e:
+        logger.error(f"❌ DALL-E background generation error: {e}")
+        return None
 
 # Enhanced system prompt with single-question JSON format
 # Optimized for both small and large form generation (supports 50+ MCQ forms)
@@ -99,6 +171,35 @@ FORM GENERATION GUIDELINES:
 - Add min/max constraints for number fields when appropriate
 - For file uploads, specify accepted file types in the accept array
 - For MCQ/Quiz forms with many questions: generate ALL questions requested by the user
+
+STRICT CONTENT EXTRACTION RULES (FOR UPLOADED FILES/IMAGES):
+⚠️ CRITICAL: When user uploads a file, image, or provides specific content:
+- Generate form fields ONLY from information EXPLICITLY present in the provided content
+- Do NOT add inferred, guessed, or assumed questions beyond what is in the source
+- Do NOT create duplicate questions that ask the same thing in different words
+- Do NOT expand or elaborate beyond the source material
+- Each question/field MUST map directly to specific content in the uploaded file
+- If the file contains 10 MCQs, generate EXACTLY 10 MCQ fields - no more, no less
+- Preserve the EXACT wording of questions and options when extracting from source
+- NEVER add "bonus", "additional", or "extra" questions not in the source
+- If source has 5 questions, output EXACTLY 5 fields. If source has 20 questions, output EXACTLY 20 fields.
+
+DEDUPLICATION RULES:
+- Before adding any field, mentally check if a semantically equivalent field already exists
+- Questions like "What is X?" and "Describe X" are duplicates - keep only one
+- Combine related information into single comprehensive fields when appropriate
+- Never repeat the same concept in multiple fields
+
+BACKGROUND IMAGE QUESTION (MANDATORY - ALWAYS ASK AS FINAL QUESTION):
+⚠️ IMPORTANT: Before generating the final form, you MUST ask the user about background preference.
+- This is the LAST question you ask before generating the form
+- Always ask this question - never skip it
+- Generate 4-5 contextual background options based on the form type being created
+- First option should always be "No background (clean white)"
+- Other options should match the form's purpose (e.g., for school form: "School campus", "Books/education", etc.)
+
+Use this format:
+{"mode":"question","question":{"id":"bg_preference","label":"Would you like a background image for your form?","type":"radio","options":["No background (clean white)", "Option based on form type", "Another relevant option", "Third relevant option", "Fourth relevant option"]}}
 
 Be professional, helpful, and efficient."""
 
@@ -171,6 +272,7 @@ class InitFormRequest(BaseModel):
     form_type: str
     custom_prompt: Optional[str] = None  # For blank forms with user-defined prompts
     file_content: Optional[str] = None  # Content from uploaded file (MCQs, data, etc.)
+    image_data: Optional[str] = None  # Base64 image data for Vision API analysis
     session_id: Optional[str] = None
 
 
@@ -195,14 +297,40 @@ class SessionResponse(BaseModel):
 # Helper function to call LLM
 async def call_llm(messages: List) -> str:
     """Call LLM with messages and return response"""
+    import json
+    from datetime import datetime
+    
     try:
         response = await asyncio.to_thread(
             lambda: model.invoke(messages)
         )
+        
+        # Save LLM output to JSON file (only response content)
+        output_data = {
+            "timestamp": datetime.now().isoformat(),
+            "llm_output": response.content
+        }
+        
+        # Save to JSON file (append mode)
+        json_file_path = "llm_outputs.json"
+        try:
+            existing_data = []
+            if os.path.exists(json_file_path):
+                with open(json_file_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            existing_data.append(output_data)
+            with open(json_file_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, indent=2, ensure_ascii=False)
+            logger.info(f"📁 LLM output saved to {json_file_path}")
+        except Exception as file_error:
+            logger.warning(f"⚠️ Could not save LLM output to file: {file_error}")
+        
         return response.content
     except Exception as e:
         logger.error(f"LLM call failed: {e}")
         raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
+
+
 
 
 # Root endpoint
@@ -292,27 +420,68 @@ async def init_form_creation(
             
             # Combine user prompt with file content if provided
             user_prompt = req.custom_prompt.strip()
-            if req.file_content and len(req.file_content.strip()) > 0:
-                # Format: User instructions + File content
-                combined_prompt = f"""USER INSTRUCTIONS:
+            
+            # Track if we have image data for Vision API
+            has_image = req.image_data and len(req.image_data.strip()) > 100
+            image_analysis = None
+            
+            if has_image:
+                # Process image for Vision API
+                logger.info("📷 Image data received - analyzing for form generation...")
+                image_analysis = analyze_image_for_form_generation(req.image_data.strip())
+                
+                if image_analysis.get("success"):
+                    # Format image analysis for LLM
+                    image_prompt = format_image_analysis_for_llm(image_analysis, user_prompt)
+                    logger.info(f"✅ Image analyzed: type={image_analysis['content_type']}, OCR={image_analysis['ocr_char_count']} chars")
+                    
+                    # If we also have file content, combine both
+                    if req.file_content and len(req.file_content.strip()) > 0:
+                        parsed_content = detect_and_parse_file_content(req.file_content.strip())
+                        if parsed_content:
+                            image_prompt += f"\n\nADDITIONAL FILE CONTENT:\n---\n{parsed_content[:10000]}\n---"
+                    
+                    initial_prompt = wrap_user_prompt(image_prompt)
+                else:
+                    logger.warning("⚠️ Image analysis failed, falling back to text prompt")
+                    initial_prompt = wrap_user_prompt(user_prompt)
+                    has_image = False  # Reset flag
+            elif req.file_content and len(req.file_content.strip()) > 0:
+                # Parse file content (handles PDF, DOCX, XLSX extraction)
+                parsed_content = detect_and_parse_file_content(req.file_content.strip())
+                
+                if parsed_content:
+                    # Log the parsed content for debugging
+                    logger.info(f"📄 PARSED FILE CONTENT ({len(parsed_content)} chars):")
+                    logger.info(f"--- START PARSED CONTENT ---")
+                    # Log first 1000 chars to avoid flooding logs
+                    logger.info(parsed_content[:1000] + ("..." if len(parsed_content) > 1000 else ""))
+                    logger.info(f"--- END PARSED CONTENT PREVIEW ---")
+                    
+                    # Format: User instructions + Parsed file content
+                    combined_prompt = f"""USER INSTRUCTIONS:
 {user_prompt}
 
-UPLOADED FILE CONTENT:
+UPLOADED FILE CONTENT (PARSED):
 ---
-{req.file_content.strip()}
+{parsed_content}
 ---
 
 Please analyze the file content above and follow the user's instructions to generate the form.
 If the file contains MCQs/questions, extract them and create form fields accordingly.
 If the file contains data, generate relevant questions/fields based on that data."""
-                logger.info(f"File content provided ({len(req.file_content)} chars), combining with prompt")
-                initial_prompt = wrap_user_prompt(combined_prompt)
+                    logger.info(f"✅ File parsed and combined with prompt ({len(parsed_content)} chars)")
+                    initial_prompt = wrap_user_prompt(combined_prompt)
+                else:
+                    initial_prompt = wrap_user_prompt(user_prompt)
             else:
                 initial_prompt = wrap_user_prompt(user_prompt)
             
             logger.info(f"Blank form with custom prompt: {req.custom_prompt[:100]}...")
         else:
             initial_prompt = get_form_prompt(req.form_type)
+            has_image = False
+            image_analysis = None
         
         # Create session
         session = session_mgr.create_session(
@@ -326,11 +495,32 @@ If the file contains data, generate relevant questions/fields based on that data
         
         logger.info(f"Created AI session {session.session_id} for user {current_user.email}")
         
-        # Prepare messages for LLM
-        messages = [
-            SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=initial_prompt)
-        ]
+        # Prepare messages for LLM (with or without image)
+        if has_image and image_analysis and image_analysis.get("success"):
+            # Use multimodal message with image for Vision API
+            logger.info("🖼️ Sending image to Vision LLM for analysis...")
+            
+            # Create multimodal content for Gemini Vision
+            image_content = {
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{image_analysis['mime_type']};base64,{image_analysis['base64_data']}"
+                } 
+            }
+            
+            messages = [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=[
+                    {"type": "text", "text": initial_prompt},
+                    image_content
+                ])
+            ]
+        else:
+            # Standard text-only message
+            messages = [
+                SystemMessage(content=SYSTEM_PROMPT),
+                HumanMessage(content=initial_prompt)
+            ]
         
         # Call LLM
         llm_response = await call_llm(messages)
@@ -372,25 +562,44 @@ If the file contains data, generate relevant questions/fields based on that data
             # Save form to database (only if not already saved)
             if not session.form_id:
                 logger.info(f"💾 Saving new form for session {session.session_id}")
-                form_id = await save_ai_generated_form(
-                    parsed["form"],
+                
+                # Extract bg_preference from session answers (user's background selection)
+                form_data_with_bg = parsed["form"].copy() if isinstance(parsed["form"], dict) else parsed["form"]
+                
+                # session.answers is a Dict[str, Any] where key is question_id and value is the answer
+                if hasattr(session, 'answers') and isinstance(session.answers, dict):
+                    bg_value = session.answers.get('bg_preference')
+                    if bg_value:
+                        form_data_with_bg['bg_preference'] = bg_value
+                        logger.info(f"🎨 Found bg_preference in session answers: {bg_value}")
+                
+                form_id, generated_bg = await save_ai_generated_form(
+                    form_data_with_bg,
                     current_user.id,
                     req.form_type,
                     session.session_id
                 )
                 session.form_id = form_id  # Track that we saved this form
+                session.generated_bg = generated_bg  # Store for response
             else:
                 logger.info(f"✅ Form already saved for session {session.session_id}, using existing form_id: {session.form_id}")
                 form_id = session.form_id
+                generated_bg = getattr(session, 'generated_bg', None)
             
             session.final_form = parsed["form"]
             session.current_stage = SessionStage.FORM_SCHEMA
             session_mgr.update_session(session)
             
+            # Include generated background image in response for immediate display
+            response_form = parsed["form"].copy() if isinstance(parsed["form"], dict) else parsed["form"]
+            if generated_bg:
+                response_form["backgroundImage"] = generated_bg
+                logger.info("✅ Including generated backgroundImage in response")
+            
             return SessionResponse(
                 session_id=session.session_id,
                 mode="form_schema",
-                form=parsed["form"],
+                form=response_form,
                 form_id=form_id
             )
             
@@ -490,25 +699,50 @@ async def submit_answer(
             # Save form to database (only if not already saved)
             if not session.form_id:
                 logger.info(f"💾 Saving new form for session {session.session_id}")
-                form_id = await save_ai_generated_form(
-                    parsed["form"],
+                
+                # Extract bg_preference from session answers (user's background selection)
+                form_data_with_bg = parsed["form"].copy() if isinstance(parsed["form"], dict) else parsed["form"]
+                
+                # session.answers is a Dict[str, Any] where key is question_id and value is the answer
+                if hasattr(session, 'answers') and isinstance(session.answers, dict):
+                    # Debug: log all answer keys
+                    logger.info(f"📋 Session answers keys: {list(session.answers.keys())}")
+                    logger.info(f"📋 Session answers: {session.answers}")
+                    
+                    bg_value = session.answers.get('bg_preference')
+                    if bg_value:
+                        form_data_with_bg['bg_preference'] = bg_value
+                        logger.info(f"🎨 Found bg_preference in session answers: {bg_value}")
+                    else:
+                        logger.warning("⚠️ bg_preference not found in session.answers")
+                
+                form_id, generated_bg = await save_ai_generated_form(
+                    form_data_with_bg,
                     current_user.id,
                     session.form_type,
                     session.session_id
                 )
                 session.form_id = form_id  # Track that we saved this form
+                session.generated_bg = generated_bg  # Store for response
             else:
                 logger.info(f"✅ Form already saved for session {session.session_id}, using existing form_id: {session.form_id}")
                 form_id = session.form_id
+                generated_bg = getattr(session, 'generated_bg', None)
             
             session.final_form = parsed["form"]
             session.current_stage = SessionStage.FORM_SCHEMA
             session_mgr.update_session(session)
             
+            # Include generated background image in response for immediate display
+            response_form = parsed["form"].copy() if isinstance(parsed["form"], dict) else parsed["form"]
+            if generated_bg:
+                response_form["backgroundImage"] = generated_bg
+                logger.info("✅ Including generated backgroundImage in response")
+            
             return SessionResponse(
                 session_id=session.session_id,
                 mode="form_schema",
-                form=parsed["form"],
+                form=response_form,
                 form_id=form_id
             )
         else:
@@ -532,11 +766,18 @@ async def save_ai_generated_form(form_data: dict, owner_id: str, form_type: str,
         ai_session_id: AI conversation session ID
     
     Returns:
-        str: Created form ID
+        tuple: (form_id, background_image) - Created form ID and generated background image
     """
     from routes.form_routes import generate_slug
     
     form_repo = FormRepository()
+    
+    # Check if user selected a background theme and generate image
+    background_image = None
+    bg_preference = form_data.get("bg_preference") or form_data.get("backgroundTheme")
+    if bg_preference:
+        logger.info(f"🎨 User selected background: {bg_preference}")
+        background_image = await generate_background_image(bg_preference)
     
     # Create FormCreate object
     form_create = FormCreate(
@@ -544,6 +785,7 @@ async def save_ai_generated_form(form_data: dict, owner_id: str, form_type: str,
         description=form_data.get("description"),
         fields=form_data.get("fields", []),
         globalStyles=form_data.get("globalStyles"),
+        backgroundImage=background_image,  # Include generated background
         status=FormStatus.DRAFT  # AI-generated forms start as drafts
     )
     
@@ -568,7 +810,8 @@ async def save_ai_generated_form(form_data: dict, owner_id: str, form_type: str,
     
     logger.info(f"✅ AI-generated form saved to database: {form['_id']}")
     
-    return str(form["_id"])
+    # Return both form_id and generated background image
+    return str(form["_id"]), background_image
 
 
 # Legacy endpoints (kept for backward compatibility)
@@ -593,17 +836,6 @@ class AnswerRequest(BaseModel):
 
 
 
-# Helper function to call LLM
-async def call_llm(messages: List) -> str:
-    """Call LLM with messages and return response"""
-    try:
-        response = await asyncio.to_thread(
-            lambda: model.invoke(messages)
-        )
-        return response.content
-    except Exception as e:
-        logger.error(f"LLM call failed: {e}")
-        raise HTTPException(status_code=500, detail=f"LLM error: {str(e)}")
 
 
 # API Endpoints

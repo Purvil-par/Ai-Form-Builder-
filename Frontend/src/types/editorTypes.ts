@@ -93,6 +93,7 @@ export interface FormSchema {
   globalStyles?: GlobalStyles;
   customCSS?: string;
   editorContent?: string;  // Rich content below form (Jodit Editor HTML)
+  backgroundImage?: string; // Base64 data URL for form background
 }
 
 export interface EditorState {

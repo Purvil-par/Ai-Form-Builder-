@@ -4,7 +4,7 @@
  * Handles loading form data and navigation
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CanvasFormEditor from '../components/CanvasFormEditor';
 import type { FormSchema } from '../types/editorTypes';
@@ -17,7 +17,14 @@ const FormEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref to prevent double API calls (React StrictMode)
+  const isLoadedRef = useRef(false);
+
   useEffect(() => {
+    // Prevent double loading in React StrictMode
+    if (isLoadedRef.current) return;
+    isLoadedRef.current = true;
+
     const loadForm = async () => {
       if (!formId) {
         setError('Form ID is required');
@@ -37,6 +44,7 @@ const FormEditorPage: React.FC = () => {
           globalStyles: data.globalStyles || {},
           ctaButton: data.ctaButton || undefined,
           editorContent: data.editorContent || '', // Include editor content
+          backgroundImage: data.backgroundImage || '', // Include background image
         };
         
         setFormData(schema);
@@ -71,6 +79,7 @@ const FormEditorPage: React.FC = () => {
         fields: schema.fields,
         globalStyles: schema.globalStyles,
         ctaButton: schema.ctaButton,
+        backgroundImage: schema.backgroundImage,
       });
       
       // Optionally show success message

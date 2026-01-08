@@ -20,6 +20,10 @@ import {
   Plus,
   FileText,
   Upload,
+  ImageIcon,
+  Trash2,
+  Eye,
+  ChevronDown,
 } from "lucide-react";
 import FieldsPalette from "./editor/FieldsPalette";
 import StylePanel from "./editor/StylePanel";
@@ -47,6 +51,7 @@ interface CanvasFormEditorProps {
   onSave: (schema: FormSchema) => void | Promise<void>;
   onClose: () => void;
   formId?: string; // Optional: if provided, update existing form instead of creating new
+  sourceFile?: string; // Optional: Base64 source file/image that was uploaded to generate this form
 }
 
 const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
@@ -54,6 +59,7 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
   onSave,
   onClose,
   formId, // Get formId prop
+  sourceFile, // Source file/image used to generate this form
 }) => {
   // Debug: Log formId on component mount
   React.useEffect(() => {
@@ -117,11 +123,20 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
     initialFormData?.editorContent || ""
   );
 
+  // Background Image state
+  const [backgroundImage, setBackgroundImage] = useState<string>(
+    (initialFormData as any)?.backgroundImage || ""
+  );
+
   // Success notification state
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   
   // Close confirmation dialog state
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // View dropdown and Source modal states
+  const [showViewDropdown, setShowViewDropdown] = useState(false);
+  const [showSourceModal, setShowSourceModal] = useState(false);
 
   // Get current user for ownership check
   const { user } = useAuth();
@@ -495,6 +510,9 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
           globalStyles: globalStyles,
           ctaButton: ctaButton || undefined,
           editorContent: editorContent || undefined, // Include rich content
+          // IMPORTANT: Send null explicitly when background is removed, not undefined
+          // undefined gets excluded by backend's exclude_unset, but null triggers actual removal
+          backgroundImage: backgroundImage === '' ? null : (backgroundImage || undefined),
         };
         console.log("Calling updateForm API with:", updateData);
         await formsService.updateForm(formId, updateData);
@@ -510,6 +528,7 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
           globalStyles: globalStyles,
           ctaButton: ctaButton || undefined,
           editorContent: editorContent || undefined, // Include rich content
+          backgroundImage: backgroundImage || undefined, // Include background image
           status: "draft" as const,
         };
         console.log("Calling createForm API with:", createData);
@@ -604,35 +623,58 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
             </button>
           </div>
 
-          {/* Canvas Mode */}
+          {/* Canvas Mode Dropdown + Source Preview */}
           <div className="flex items-center gap-1 border-r border-gray-200 pr-3">
-            <button
-              onClick={() => setCanvasMode("desktop")}
-              className={`canvas-mode-button ${
-                canvasMode === "desktop" ? "active" : ""
-              }`}
-              title="Desktop View"
-            >
-              <Monitor size={18} />
-            </button>
-            <button
-              onClick={() => setCanvasMode("tablet")}
-              className={`canvas-mode-button ${
-                canvasMode === "tablet" ? "active" : ""
-              }`}
-              title="Tablet View"
-            >
-              <Tablet size={18} />
-            </button>
-            <button
-              onClick={() => setCanvasMode("mobile")}
-              className={`canvas-mode-button ${
-                canvasMode === "mobile" ? "active" : ""
-              }`}
-              title="Mobile View"
-            >
-              <Smartphone size={18} />
-            </button>
+            {/* View Mode Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowViewDropdown(!showViewDropdown)}
+                className="canvas-mode-button active flex items-center gap-1"
+                title="Change View Mode"
+              >
+                {canvasMode === "desktop" && <Monitor size={18} />}
+                {canvasMode === "tablet" && <Tablet size={18} />}
+                {canvasMode === "mobile" && <Smartphone size={18} />}
+                <ChevronDown size={14} />
+              </button>
+              
+              {showViewDropdown && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
+                  <button
+                    onClick={() => { setCanvasMode("desktop"); setShowViewDropdown(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 ${canvasMode === "desktop" ? "bg-blue-50 text-blue-600" : ""}`}
+                  >
+                    <Monitor size={16} />
+                    Desktop
+                  </button>
+                  <button
+                    onClick={() => { setCanvasMode("tablet"); setShowViewDropdown(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 ${canvasMode === "tablet" ? "bg-blue-50 text-blue-600" : ""}`}
+                  >
+                    <Tablet size={16} />
+                    Tablet
+                  </button>
+                  <button
+                    onClick={() => { setCanvasMode("mobile"); setShowViewDropdown(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 ${canvasMode === "mobile" ? "bg-blue-50 text-blue-600" : ""}`}
+                  >
+                    <Smartphone size={16} />
+                    Mobile
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Source File Preview Button - only show if sourceFile exists */}
+            {sourceFile && (
+              <button
+                onClick={() => setShowSourceModal(true)}
+                className="canvas-mode-button"
+                title="View Source File/Image"
+              >
+                <Eye size={18} />
+              </button>
+            )}
           </div>
 
           {/* Actions */}
@@ -659,6 +701,56 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
               Editor
             </button>
           )}
+          
+          {/* Background Image Button */}
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  // Check file size (max 5MB)
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error('Background image must be less than 5MB');
+                    return;
+                  }
+                  // Convert to Base64
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    setBackgroundImage(reader.result as string);
+                    toast.success('Background image added!');
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="hidden"
+              id="background-image-upload"
+            />
+            {backgroundImage ? (
+              <button
+                onClick={() => {
+                  setBackgroundImage('');
+                  toast.success('Background image removed!');
+                }}
+                className="toolbar-button text-red-600 hover:bg-red-50"
+                title="Remove Background Image"
+              >
+                <Trash2 size={18} className="mr-2" />
+                Remove BG
+              </button>
+            ) : (
+              <label
+                htmlFor="background-image-upload"
+                className="toolbar-button cursor-pointer"
+                title="Add Background Image"
+              >
+                <ImageIcon size={18} className="mr-2" />
+                Background
+              </label>
+            )}
+          </div>
+          
           {!ctaButton && (
             <button onClick={handleAddCTA} className="toolbar-button">
               <Plus size={18} className="mr-2" />
@@ -692,20 +784,38 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
         {/* Canvas Area */}
         <div className="flex-1 overflow-auto custom-scrollbar canvas-grid p-8">
           <div
-            className={`mx-auto bg-white shadow-lg rounded-lg transition-all duration-300`}
-            style={{ width: getCanvasWidth(), minHeight: "600px" }}
+            className={`mx-auto bg-white shadow-lg rounded-lg transition-all duration-300 relative overflow-hidden`}
+            style={{ 
+              width: getCanvasWidth(), 
+              minHeight: "600px",
+              ...(backgroundImage && {
+                backgroundImage: `url(${backgroundImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              })
+            }}
             onDrop={handleCanvasDrop}
             onDragOver={handleCanvasDragOver}
           >
+            {/* Light Overlay for slight text readability - mostly transparent */}
+            {backgroundImage && (
+              <div 
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.2) 100%)',
+                }}
+              />
+            )}
             {/* Form Header */}
-            <div className="p-8 border-b border-gray-200">
+            <div className="p-8 border-b border-gray-200 relative z-10">
               <input
                 type="text"
                 value={formSchema.title}
                 onChange={(e) =>
                   setFormSchema({ ...formSchema, title: e.target.value })
                 }
-                className="text-3xl font-bold text-gray-900 w-full border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                className="text-3xl font-bold text-gray-900 w-full border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 bg-transparent"
                 placeholder="Form Title"
               />
               {formSchema.description && (
@@ -717,7 +827,7 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
                       description: e.target.value,
                     })
                   }
-                  className="mt-2 text-gray-600 w-full border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                  className="mt-2 text-gray-600 w-full border-none outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 bg-transparent"
                   placeholder="Form Description"
                   rows={2}
                 />
@@ -725,56 +835,77 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
             </div>
 
             {/* Form Fields */}
-            <div className="p-8 space-y-4">
+            <div className="p-8 space-y-4 relative z-10">
               {fields.length === 0 ? (
                 <div className="drop-zone-active py-16">
                   <p>Drag and drop fields here to start building your form</p>
                 </div>
               ) : (
-                fields.map((field, index) => (
-                  <DraggableField
-                    key={field.id}
-                    field={field}
-                    index={index}
-                    isSelected={
-                      selectedFieldId === field.id && selectedType === "field"
-                    }
-                    isDragging={draggedFieldIndex === index}
-                    onSelect={() => handleFieldClick(field.id)}
-                    onDelete={() => handleDeleteField(field.id)}
-                    onDuplicate={() => handleDuplicateField(field.id)}
-                    onDragStart={handleFieldDragStartReorder(index)}
-                    onDragEnd={handleFieldDragEnd}
-                    onDragOver={handleFieldDragOver(index)}
-                    onDrop={handleFieldDrop(index)}
-                  >
-                    {/* Field Label */}
-                    <label
-                      className="block mb-2"
-                      style={{
-                        fontFamily: field.style.fontFamily,
-                        fontSize: field.style.fontSize,
-                        fontWeight: "500",
-                        color: field.style.color,
+                fields.map((field, index) => {
+                  // Calculate question number for ALL fields sequentially
+                  const questionNumber = index + 1;
+                  
+                  return (
+                    <DraggableField
+                      key={field.id}
+                      field={field}
+                      index={index}
+                      isSelected={
+                        selectedFieldId === field.id && selectedType === "field"
+                      }
+                      isDragging={draggedFieldIndex === index}
+                      onSelect={() => handleFieldClick(field.id)}
+                      onDelete={() => handleDeleteField(field.id)}
+                      onDuplicate={() => handleDuplicateField(field.id)}
+                      onDragStart={handleFieldDragStartReorder(index)}
+                      onDragEnd={handleFieldDragEnd}
+                      onDragOver={handleFieldDragOver(index)}
+                      onDrop={handleFieldDrop(index)}
+                      onResize={(width) => {
+                        // Update field width when resized
+                        const updatedFields = fields.map((f) =>
+                          f.id === field.id ? { ...f, width } : f
+                        );
+                        setFormSchema({
+                          ...formSchema,
+                          fields: updatedFields,
+                        });
                       }}
                     >
-                      {field.label}
-                      {field.required && (
-                        <span className="text-red-500 ml-1">*</span>
-                      )}
-                    </label>
+                      {/* Field Label */}
+                      <label
+                        className="block mb-2"
+                        style={{
+                          fontFamily: field.style.fontFamily,
+                          fontSize: field.style.fontSize,
+                          fontWeight: "500",
+                          color: field.style.color,
+                        }}
+                      >
+                        {questionNumber !== null && (
+                          <span className="font-semibold mr-1" style={{ color: field.style.color }}>
+                            Q{questionNumber}.
+                          </span>
+                        )}
+                        {field.label}
+                        {field.required && (
+                          <span className="text-red-500 ml-1">*</span>
+                        )}
+                      </label>
 
                     {/* Field Input */}
                     {field.type === "textarea" ? (
                       <textarea
                         placeholder={field.placeholder}
-                        className="w-full"
+                        className="w-full outline-none"
                         rows={4}
                         style={{
                           fontFamily: field.style.fontFamily,
                           fontSize: field.style.fontSize,
                           fontWeight: field.style.fontWeight,
                           lineHeight: field.style.lineHeight,
+                          letterSpacing: field.style.letterSpacing,
+                          textAlign: field.style.textAlign as any,
                           color: field.style.color,
                           backgroundColor: field.style.backgroundColor,
                           borderWidth: field.style.borderWidth,
@@ -782,17 +913,23 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
                           borderColor: field.style.borderColor,
                           borderRadius: field.style.borderRadius,
                           padding: `${field.style.paddingTop} ${field.style.paddingRight} ${field.style.paddingBottom} ${field.style.paddingLeft}`,
+                          marginTop: field.style.marginTop,
+                          marginRight: field.style.marginRight,
+                          marginLeft: field.style.marginLeft,
                           boxShadow: field.style.boxShadow,
                           transition: field.style.transition,
                         }}
                       />
                     ) : field.type === "select" ? (
                       <select
-                        className="w-full"
+                        className="w-full outline-none"
                         style={{
                           fontFamily: field.style.fontFamily,
                           fontSize: field.style.fontSize,
                           fontWeight: field.style.fontWeight,
+                          lineHeight: field.style.lineHeight,
+                          letterSpacing: field.style.letterSpacing,
+                          textAlign: field.style.textAlign as any,
                           color: field.style.color,
                           backgroundColor: field.style.backgroundColor,
                           borderWidth: field.style.borderWidth,
@@ -800,7 +937,11 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
                           borderColor: field.style.borderColor,
                           borderRadius: field.style.borderRadius,
                           padding: `${field.style.paddingTop} ${field.style.paddingRight} ${field.style.paddingBottom} ${field.style.paddingLeft}`,
+                          marginTop: field.style.marginTop,
+                          marginRight: field.style.marginRight,
+                          marginLeft: field.style.marginLeft,
                           boxShadow: field.style.boxShadow,
+                          transition: field.style.transition,
                         }}
                       >
                         <option>Select an option</option>
@@ -865,12 +1006,14 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
                       <input
                         type={field.type}
                         placeholder={field.placeholder}
-                        className="w-full"
+                        className="w-full outline-none"
                         style={{
                           fontFamily: field.style.fontFamily,
                           fontSize: field.style.fontSize,
                           fontWeight: field.style.fontWeight,
                           lineHeight: field.style.lineHeight,
+                          letterSpacing: field.style.letterSpacing,
+                          textAlign: field.style.textAlign as any,
                           color: field.style.color,
                           backgroundColor: field.style.backgroundColor,
                           borderWidth: field.style.borderWidth,
@@ -878,13 +1021,17 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
                           borderColor: field.style.borderColor,
                           borderRadius: field.style.borderRadius,
                           padding: `${field.style.paddingTop} ${field.style.paddingRight} ${field.style.paddingBottom} ${field.style.paddingLeft}`,
+                          marginTop: field.style.marginTop,
+                          marginRight: field.style.marginRight,
+                          marginLeft: field.style.marginLeft,
                           boxShadow: field.style.boxShadow,
                           transition: field.style.transition,
                         }}
                       />
                     )}
                   </DraggableField>
-                ))
+                  );
+                })
               )}
 
               {/* CTA Button */}
@@ -1038,6 +1185,41 @@ const CanvasFormEditor: React.FC<CanvasFormEditorProps> = ({
         }}
         onCancel={() => setShowCloseConfirm(false)}
       />
+
+      {/* Source File Preview Modal */}
+      {showSourceModal && sourceFile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onClick={() => setShowSourceModal(false)}>
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Source File Preview</h3>
+              <button
+                onClick={() => setShowSourceModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-auto max-h-[calc(90vh-80px)]">
+              <p className="text-sm text-gray-500 mb-4">
+                This is the file/image you uploaded to generate this form. Use it to verify the generated questions match the source.
+              </p>
+              {sourceFile.startsWith('data:image') ? (
+                <img 
+                  src={sourceFile} 
+                  alt="Source file preview" 
+                  className="max-w-full h-auto rounded-lg border border-gray-200"
+                />
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <pre className="text-sm text-gray-700 whitespace-pre-wrap overflow-auto max-h-96">
+                    {sourceFile.length > 5000 ? sourceFile.substring(0, 5000) + '\n\n... [Content truncated]' : sourceFile}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

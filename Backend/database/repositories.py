@@ -135,12 +135,33 @@ class FormRepository:
     
     async def update(self, form_id: str, update_data: FormUpdate, owner_id: str) -> bool:
         """Update form (owner only)"""
-        update_dict = {k: v for k, v in update_data.model_dump(exclude_unset=True).items() if v is not None}
+        # Get raw dict including None values for fields that were explicitly set
+        raw_dict = update_data.model_dump(exclude_unset=True)
+        
+        # Fields that can be explicitly set to null (removed)
+        nullable_fields = {'backgroundImage', 'editorContent', 'ctaButton'}
+        
+        # Build update dict - keep None for nullable fields, filter for others
+        update_dict = {}
+        unset_dict = {}
+        
+        for k, v in raw_dict.items():
+            if v is None and k in nullable_fields:
+                # Explicitly remove these fields from the document
+                unset_dict[k] = ""
+            elif v is not None:
+                update_dict[k] = v
+        
         update_dict["updated_at"] = datetime.utcnow()
+        
+        # Build MongoDB update operation
+        update_ops = {"$set": update_dict}
+        if unset_dict:
+            update_ops["$unset"] = unset_dict
         
         result = await self.collection.update_one(
             {"_id": ObjectId(form_id), "owner_id": owner_id},
-            {"$set": update_dict}
+            update_ops
         )
         return result.modified_count > 0
     

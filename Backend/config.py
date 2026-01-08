@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     
     # OpenAI
     OPENAI_API_KEY: str
+    GOOGLE_API_KEY: str
     
     # MongoDB
     MONGODB_URL: str = "mongodb://localhost:27017/ai_form_builder"

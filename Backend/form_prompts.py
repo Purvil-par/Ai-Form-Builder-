@@ -287,10 +287,21 @@ INSTRUCTIONS:
 - Once you have enough information to create a complete, usable form, generate the final form immediately
 - Remember to respond in the required JSON format with mode flag ("questions" or "final_form")
 
+STRICT EXTRACTION MODE (WHEN FILE/DATA IS PROVIDED):
+⚠️ If the user provides specific content, file data, MCQs, or structured information:
+- Generate form fields ONLY from the provided content - do NOT add your own questions
+- Do NOT create duplicate or semantically similar questions
+- Match the EXACT number of questions/fields present in the source material
+- Preserve original question wording exactly as given in the source
+- Do NOT infer, guess, or add "bonus" questions beyond the source
+- If source has 10 questions, generate EXACTLY 10 fields. No more, no less.
+
 GUARDRAILS:
 - Do not generate incomplete or poorly structured forms
 - Do not ask unnecessary questions if the user prompt is already detailed
 - Do not exceed 3 rounds of clarifying questions
 - Always ensure the final form has proper validation and required field markers
+- Never duplicate questions or add semantically similar variations
 
 Analyze the user's request and proceed accordingly."""
+
